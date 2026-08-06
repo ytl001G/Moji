@@ -74,17 +74,21 @@ export function renderCaptureView(container) {
       if (!fullImageBlob || fullImageBlob.size === 0) throw new Error('사진을 만들지 못했습니다. (빈 이미지)');
 
       const objectURL = URL.createObjectURL(fullImageBlob);
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         sourceImg.onload = () => {
-          URL.revokeObjectURL(objectURL); // 이미지 로드 완료 후 URL 해제
+          sourceImg.onload = null;
+          sourceImg.onerror = null;
+          URL.revokeObjectURL(objectURL);
           resolve();
         };
         sourceImg.onerror = (e) => {
-          URL.revokeObjectURL(objectURL); // 에러 발생 시에도 URL 해제
+          sourceImg.onload = null;
+          sourceImg.onerror = null;
+          URL.revokeObjectURL(objectURL);
           showNotice('이미지 로드 실패', e.message || '사진을 표시할 수 없습니다.', 'error');
-          reject(new Error('이미지 로드 실패')); // 에러 발생 시 Promise를 reject하여 외부 catch 블록에서 처리
+          reject(new Error('이미지 로드 실패'));
         };
-        sourceImg.src = objectURL; // Blob으로부터 생성된 URL 할당
+        sourceImg.src = objectURL;
       });
       video.hidden = true;
       sourceImg.hidden = false;
@@ -101,6 +105,10 @@ export function renderCaptureView(container) {
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
+        ready() {
+          // Wait one frame for the visible preview container to finish layout.
+          requestAnimationFrame(() => cropper?.crop());
+        },
       });
       cropHint.hidden = false;
       btnSnap.hidden = true;
@@ -169,7 +177,9 @@ export function renderCaptureView(container) {
     cropper?.destroy();
     cropper = null;
     sourceImg.hidden = true;
-    sourceImg.src = ''; // 메모리 해제를 위해 src 초기화
+    sourceImg.onload = null;
+    sourceImg.onerror = null;
+    sourceImg.removeAttribute('src');
     cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
