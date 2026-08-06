@@ -69,27 +69,33 @@ export function renderCaptureView(container) {
 
   btnSnap.addEventListener('click', async () => {
     if (!cameraReady) return;
-    spinner.hidden = false;
     btnSnap.disabled = true;
     try {
       fullImageBlob = await capturePhoto(video);
       if (!fullImageBlob) throw new Error('사진을 만들지 못했습니다.');
+
+      const objectURL = URL.createObjectURL(fullImageBlob);
       await new Promise((resolve) => {
-        cropImg.onload = resolve;
-        cropImg.onerror = resolve;
-        cropImg.src = canvas.toDataURL('image/jpeg', 0.98);
+        cropImg.onload = () => {
+          URL.revokeObjectURL(objectURL); // 이미지 로드 완료 후 URL 해제
+          resolve();
+        };
+        cropImg.onerror = (e) => {
+          URL.revokeObjectURL(objectURL); // 에러 발생 시에도 URL 해제
+          showNotice('이미지 로드 실패', e.message || '사진을 표시할 수 없습니다.', 'error');
+          resolve(); // 에러 발생 시에도 Promise는 resolve하여 다음 로직 진행
+        };
+        cropImg.src = objectURL; // Blob으로부터 생성된 URL 할당
       });
       video.hidden = true;
       cropImg.hidden = false;
       btnSnap.hidden = true;
       btnStartCrop.hidden = false;
       btnCancel.hidden = false;
-      recognizeChar(cropImg.src).then((char) => { if (char) charInput.value = char; }).catch(() => null);
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error');
       btnSnap.disabled = false;
     } finally {
-      spinner.hidden = true;
     }
   });
 
