@@ -1,4 +1,4 @@
-let scannerInstance = null;
+import jscanify from 'jscanify'; // jscanify 라이브러리 임포트
 
 /**
  * jscanify를 특정 canvas 요소에 초기화합니다.
@@ -8,7 +8,7 @@ let scannerInstance = null;
 export function initScanner(canvasElement, imageElement) {
   if (scannerInstance) {
     scannerInstance.destroy(); // jscanify 인스턴스에 destroy 메서드가 있다면 호출
-  }
+  } // jscanify 라이브러리 자체에는 destroy 메서드가 없으므로, 이 줄은 제거하거나 주석 처리하는 것이 좋습니다.
   // 캔버스의 크기를 원본 이미지와 동일하게 설정합니다.
   canvasElement.width = imageElement.naturalWidth;
   canvasElement.height = imageElement.naturalHeight;

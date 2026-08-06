@@ -41,9 +41,7 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/dexie')) return 'dexie';
-          if (id.includes('node_modules/cropperjs')) return 'cropper';
-          // jscanify 및 그 무거운 의존성(jsdom, canvas)을 하나의 청크로 명시적으로 분리
-          if (id.includes('node_modules/jscanify') || id.includes('node_modules/jsdom') || id.includes('node_modules/canvas')) return 'jscanify-bundle';
+          // cropperjs와 jscanify는 더 이상 번들되지 않으므로 관련 청크 분리 설정은 제거합니다.
         }
       }
     }

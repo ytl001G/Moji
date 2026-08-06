@@ -1,5 +1,5 @@
-import { recognizeChar, terminateOcrWorker, getOcrWorker } from '../services/ocr.js';
-import { addCollectionItem } from '../db/index.js';
+import { initScanner, getScannedImageBlob, destroyScanner } from '../services/scanner.js'; // scanner.js 직접 임포트
+import { recognizeChar, terminateOcrWorker, getOcrWorker } from '../services/ocr.js'; 
 import { extractExifData } from '../utils/exif.js';
 import { showNotice } from '../components/notice.js';
 
@@ -17,7 +17,6 @@ export function renderCaptureView(container) {
       </div>
       <div class="capture-controls">
         <button id="btn-snap" type="button" disabled aria-label="사진 촬영">●</button>
-        <button id="btn-start-crop" type="button" hidden>크롭 시작</button>
         <button id="btn-save-crop" type="button" hidden>글자 선택하기</button>
         <button id="btn-cancel" type="button" hidden>다시 촬영</button>
       </div>
@@ -42,14 +41,13 @@ export function renderCaptureView(container) {
   const cropHint = container.querySelector('#crop-hint');
   const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
-  const btnStartCrop = container.querySelector('#btn-start-crop');
   const btnSave = container.querySelector('#btn-save-crop');
   const btnCancel = container.querySelector('#btn-cancel');
   const saveSheet = container.querySelector('#save-sheet');
   const charInput = container.querySelector('#save-char');
   const addressInput = container.querySelector('#save-address');
   let fullImageBlob = null;
-  let scannerModule = null; // 동적으로 로드될 scanner 모듈을 저장할 변수
+  // let scannerModule = null; // scanner.js를 직접 임포트하므로 이 변수는 더 이상 필요 없습니다.
   let croppedImageBlob = null;
   let cameraReady = false;
 
@@ -92,14 +90,13 @@ export function renderCaptureView(container) {
         sourceImg.src = objectURL; // Blob으로부터 생성된 URL 할당
       });
       video.hidden = true;
-      // scanner 모듈을 동적으로 로드하고 초기화
-      scannerModule = await import('../services/scanner.js'); // jscanify를 포함하는 scanner 모듈 동적 로드
-      scannerModule.initScanner(scanCanvas, sourceImg);
+      // scanner.js 모듈을 직접 임포트하여 초기화
+      initScanner(scanCanvas, sourceImg);
       scanCanvas.hidden = false; // 스캐너 초기화 후 캔버스 표시
       cropHint.hidden = false;
       btnSnap.hidden = true;
-      btnSave.hidden = false;
       btnCancel.hidden = false;
+      btnSave.hidden = false; // 사진 촬영 후 스캐너 초기화 완료 시 "글자 선택하기" 버튼을 바로 표시
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error');
       btnSnap.disabled = false;
@@ -111,7 +108,7 @@ export function renderCaptureView(container) {
     btnSave.disabled = true;
     spinner.hidden = false;
     try {
-      croppedImageBlob = await scannerModule.getScannedImageBlob();
+      croppedImageBlob = await getScannedImageBlob();
       const recognized = await recognizeChar(croppedImageBlob);
       if (recognized) {
         charInput.value = recognized;
@@ -123,10 +120,10 @@ export function renderCaptureView(container) {
       spinner.hidden = true;
       btnSave.disabled = false;
       saveSheet.hidden = false;
+      // btnSave.hidden = false; // 이 줄은 이제 불필요합니다.
       charInput.focus();
     }
   });
-  // '크롭 시작' 버튼은 원근 보정 워크플로우에서는 불필요하므로 제거합니다.
   container.querySelector('#btn-close-sheet').addEventListener('click', () => { saveSheet.hidden = true; });
 
   saveSheet.addEventListener('submit', async (event) => {
@@ -140,7 +137,7 @@ export function renderCaptureView(container) {
 
     try {
       // '글자 선택하기' 버튼을 누를 때 크롭된 이미지를 이미 생성했으므로 재사용합니다.
-      const finalCroppedBlob = croppedImageBlob || await scannerModule.getScannedImageBlob();
+      const finalCroppedBlob = croppedImageBlob || await getScannedImageBlob();
       if (!finalCroppedBlob) throw new Error('크롭된 이미지를 가져올 수 없습니다.');
 
       const timestamp = Date.now();
@@ -162,14 +159,13 @@ export function renderCaptureView(container) {
   });
 
   function resetToCaptureState() {
-    scannerModule?.destroyScanner(); // 동적으로 로드된 모듈의 함수 호출
+    destroyScanner(); // 직접 임포트된 함수 호출
     scanCanvas.hidden = true;
     sourceImg.src = ''; // 메모리 해제를 위해 src 초기화
     cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
     btnSnap.disabled = false;
-    btnStartCrop.hidden = true;
     btnSave.hidden = true;
     btnCancel.hidden = true;
     fullImageBlob = null;
@@ -179,7 +175,7 @@ export function renderCaptureView(container) {
   btnCancel.addEventListener('click', resetToCaptureState);
 
   startCamera();
-  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; scannerModule?.destroyScanner(); terminateOcrWorker(); };
+  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyScanner(); terminateOcrWorker(); };
 }
 
 async function capturePhoto(video) {

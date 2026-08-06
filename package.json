@@ -9,9 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "cropperjs": "^1.6.1",
     "dexie": "^3.2.4",
-    "jscanify": "^1.2.0",
     "exifreader": "^4.20.0",
     "jszip": "^3.10.1"
   },
