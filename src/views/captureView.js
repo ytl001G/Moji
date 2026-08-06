@@ -12,7 +12,7 @@ export function renderCaptureView(container) {
     <div class="capture-container">
       <div id="camera-preview-zone">
         <video id="camera-video" autoplay playsinline></video>
-        <img id="crop-target-img" alt="촬영한 이미지" hidden>
+        <img id="crop-target-img" alt="촬영한 이미지" hidden style="display: none;">
         <p id="crop-hint" class="crop-hint" hidden>드래그하여 저장할 글자 영역을 맞춰 주세요.</p>
         <div id="loading-spinner" hidden>사진을 정리하고 글자를 읽는 중…</div>
       </div>
