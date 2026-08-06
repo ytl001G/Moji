@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { deleteImageFromOpfs } from './opfs.js';
 
 // IndexedDB 데이터베이스 초기화
 export const db = new Dexie('MojiDatabase');
@@ -63,9 +64,6 @@ export async function getAllCollectedItems() {
 export async function deleteCollectionItem(id) {
   const item = await db.collections.get(id);
   if (item) {
-    // OPFS 파일 삭제 연동
-    const { deleteImageFromOpfs } = await import('./opfs.js');
-    
     // 파일 삭제는 개별적으로 시도하고, 실패해도 DB 삭제는 진행하도록 함
     if (item.cropFileName) {
       try {

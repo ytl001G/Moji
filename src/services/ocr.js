@@ -2,12 +2,24 @@ import { createWorker } from 'tesseract.js';
 
 let ocrWorker = null;
 
+// 여러 번 호출되어도 worker가 한 번만 생성되도록 Promise를 저장합니다.
+let workerPromise = null;
+
 /**
  * Tesseract.js Worker 초기화 (일본어 전용 데이터 로드)
  */
 async function getOcrWorker() {
-  if (!ocrWorker) {
-    ocrWorker = await createWorker('jpn');
+  if (!workerPromise) {
+    // createWorker는 시간이 걸리는 작업이므로 Promise를 저장해둡니다.
+    workerPromise = (async () => {
+      const worker = await createWorker('jpn');
+      // 단일 문자 인식 정확도를 높이기 위해 페이지 분할 모드를 '단일 문자'로 설정합니다.
+      await worker.setParameters({ tessedit_pageseg_mode: '10' });
+      return worker;
+    })();
+  }
+  if (!ocrWorker) { // worker가 아직 할당되지 않았을 경우에만 await 합니다.
+    ocrWorker = await workerPromise;
   }
   return ocrWorker;
 }
@@ -31,5 +43,17 @@ export async function recognizeChar(imageSource) {
   } catch (error) {
     console.error('OCR 문자 인식 실패:', error);
     return null;
+  }
+}
+
+/**
+ * Tesseract.js Worker를 종료하여 메모리를 해제합니다.
+ * 뷰가 사라질 때 호출해야 합니다.
+ */
+export async function terminateOcrWorker() {
+  if (ocrWorker) {
+    await ocrWorker.terminate();
+    ocrWorker = null;
+    workerPromise = null;
   }
 }

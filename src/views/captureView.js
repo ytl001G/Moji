@@ -1,5 +1,5 @@
 import { initCropper, getCroppedCanvasBlob, destroyCropper } from '../services/cropper.js';
-import { recognizeChar } from '../services/ocr.js';
+import { recognizeChar, terminateOcrWorker } from '../services/ocr.js';
 import { saveImageToOpfs } from '../db/opfs.js';
 import { addCollectionItem } from '../db/index.js';
 import { extractExifData } from '../utils/exif.js';
@@ -49,6 +49,7 @@ export function renderCaptureView(container) {
   const charInput = container.querySelector('#save-char');
   const addressInput = container.querySelector('#save-address');
   let fullImageBlob = null;
+  let croppedImageBlob = null;
   let cameraReady = false;
 
   async function startCamera() {
@@ -89,6 +90,7 @@ export function renderCaptureView(container) {
       });
       video.hidden = true;
       cropImg.hidden = false;
+      cropImg.style.display = 'block';
       btnSnap.hidden = true;
       btnStartCrop.hidden = false;
       btnCancel.hidden = false;
@@ -99,9 +101,24 @@ export function renderCaptureView(container) {
     }
   });
 
-  btnSave.addEventListener('click', () => {
-    saveSheet.hidden = false;
-    charInput.focus();
+  btnSave.addEventListener('click', async () => {
+    btnSave.disabled = true;
+    spinner.hidden = false;
+    try {
+      croppedImageBlob = await getCroppedCanvasBlob();
+      const recognized = await recognizeChar(croppedImageBlob);
+      if (recognized) {
+        charInput.value = recognized;
+      }
+    } catch (error) {
+      console.error('OCR 처리 중 오류:', error);
+      showNotice('문자 인식 실패', '글자를 자동으로 읽어오지 못했어요.', 'error');
+    } finally {
+      spinner.hidden = true;
+      btnSave.disabled = false;
+      saveSheet.hidden = false;
+      charInput.focus();
+    }
   });
   btnStartCrop.addEventListener('click', () => {
     initCropper(cropImg);
@@ -115,27 +132,39 @@ export function renderCaptureView(container) {
     event.preventDefault();
     const charId = charInput.value.trim();
     if (!charId || !fullImageBlob) return;
+
     const submitButton = saveSheet.querySelector('[type="submit"]');
     submitButton.disabled = true;
+    spinner.hidden = false;
+
     try {
-      const croppedBlob = await getCroppedCanvasBlob();
+      // '글자 선택하기' 버튼을 누를 때 크롭된 이미지를 이미 생성했으므로 재사용합니다.
+      const finalCroppedBlob = croppedImageBlob || await getCroppedCanvasBlob();
+      if (!finalCroppedBlob) throw new Error('크롭된 이미지를 가져올 수 없습니다.');
+
       const timestamp = Date.now();
       const location = await extractExifData(fullImageBlob);
-      await saveImageToOpfs(croppedBlob, `crop_${timestamp}.png`);
+
+      await saveImageToOpfs(finalCroppedBlob, `crop_${timestamp}.png`);
       await saveImageToOpfs(fullImageBlob, `full_${timestamp}.jpg`);
-      await addCollectionItem({ charId, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng, address: addressInput.value.trim() });
+      await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng, address: addressInput.value.trim() });
+
       saveSheet.hidden = true;
       showNotice('도감에 저장했어요', `${charId} 기록을 추가했습니다.`, 'success');
+      resetToCaptureState(); // 성공 후 카메라 뷰로 리셋
     } catch (error) {
       showNotice('저장하지 못했어요', error.message || '잠시 후 다시 시도해 주세요.', 'error');
     } finally {
+      spinner.hidden = true;
       submitButton.disabled = false;
     }
   });
 
-  btnCancel.addEventListener('click', () => {
+  function resetToCaptureState() {
     destroyCropper();
     cropImg.hidden = true;
+    cropImg.style.display = 'none';
+    cropImg.src = ''; // 메모리 해제를 위해 src 초기화
     cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
@@ -143,10 +172,14 @@ export function renderCaptureView(container) {
     btnStartCrop.hidden = true;
     btnSave.hidden = true;
     btnCancel.hidden = true;
-  });
+    fullImageBlob = null;
+    croppedImageBlob = null;
+  }
+
+  btnCancel.addEventListener('click', resetToCaptureState);
 
   startCamera();
-  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyCropper(); };
+  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyCropper(); terminateOcrWorker(); };
 }
 
 async function capturePhoto(video) {
