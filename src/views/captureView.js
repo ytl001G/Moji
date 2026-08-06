@@ -1,17 +1,18 @@
-import { initScanner, getScannedImageBlob, destroyScanner } from '../services/scanner.js'; // scanner.js 직접 임포트
-import { recognizeChar, terminateOcrWorker, getOcrWorker } from '../services/ocr.js'; 
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
+import { recognizeChar, terminateOcrWorker } from '../services/ocr.js';
 import { extractExifData } from '../utils/exif.js';
 import { showNotice } from '../components/notice.js';
 
 let currentStream = null;
+let cropper = null;
 
 export function renderCaptureView(container) {
   container.innerHTML = `
     <div class="capture-container">
       <div id="camera-preview-zone">
         <video id="camera-video" autoplay playsinline></video>
-        <img id="source-img" alt="촬영한 이미지" hidden style="display: none;"> 
-        <canvas id="scan-canvas" hidden></canvas>
+        <img id="crop-target-img" alt="촬영한 이미지" hidden>
         <p id="crop-hint" class="crop-hint" hidden>네 모서리를 조절하여 글자 영역을 맞춰 주세요.</p>
         <div id="loading-spinner" hidden>사진을 정리하고 글자를 읽는 중…</div>
       </div>
@@ -25,7 +26,6 @@ export function renderCaptureView(container) {
           <p>COLLECTION NOTE</p>
           <h3>이 사진으로 저장할까요?</h3>
           <label>문자 <input id="save-char" maxlength="4" placeholder="예: あ" required></label>
-          <label>장소 <input id="save-address" maxlength="80" placeholder="장소를 직접 적어도 돼요"></label>
           <div class="save-sheet-actions">
             <button id="btn-close-sheet" type="button">취소</button>
             <button type="submit">저장하기</button>
@@ -36,8 +36,7 @@ export function renderCaptureView(container) {
   `;
 
   const video = container.querySelector('#camera-video');
-  const sourceImg = container.querySelector('#source-img');
-  const scanCanvas = container.querySelector('#scan-canvas');
+  const sourceImg = container.querySelector('#crop-target-img');
   const cropHint = container.querySelector('#crop-hint');
   const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
@@ -45,9 +44,7 @@ export function renderCaptureView(container) {
   const btnCancel = container.querySelector('#btn-cancel');
   const saveSheet = container.querySelector('#save-sheet');
   const charInput = container.querySelector('#save-char');
-  const addressInput = container.querySelector('#save-address');
   let fullImageBlob = null;
-  // let scannerModule = null; // scanner.js를 직접 임포트하므로 이 변수는 더 이상 필요 없습니다.
   let croppedImageBlob = null;
   let cameraReady = false;
 
@@ -90,9 +87,21 @@ export function renderCaptureView(container) {
         sourceImg.src = objectURL; // Blob으로부터 생성된 URL 할당
       });
       video.hidden = true;
-      // scanner.js 모듈을 직접 임포트하여 초기화
-      initScanner(scanCanvas, sourceImg);
-      scanCanvas.hidden = false; // 스캐너 초기화 후 캔버스 표시
+      sourceImg.hidden = false;
+      cropper?.destroy();
+      cropper = new Cropper(sourceImg, {
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.8,
+        responsive: true,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+      });
       cropHint.hidden = false;
       btnSnap.hidden = true;
       btnCancel.hidden = false;
@@ -108,14 +117,13 @@ export function renderCaptureView(container) {
     btnSave.disabled = true;
     spinner.hidden = false;
     try {
-      croppedImageBlob = await getScannedImageBlob();
+      croppedImageBlob = await getCroppedImageBlob();
       const recognized = await recognizeChar(croppedImageBlob);
       if (recognized) {
         charInput.value = recognized;
       }
     } catch (error) {
       console.error('OCR 처리 중 오류:', error);
-      showNotice('문자 인식 실패', '글자를 자동으로 읽어오지 못했어요.', 'error');
     } finally {
       spinner.hidden = true;
       btnSave.disabled = false;
@@ -136,8 +144,7 @@ export function renderCaptureView(container) {
     spinner.hidden = false;
 
     try {
-      // '글자 선택하기' 버튼을 누를 때 크롭된 이미지를 이미 생성했으므로 재사용합니다.
-      const finalCroppedBlob = croppedImageBlob || await getScannedImageBlob();
+      const finalCroppedBlob = croppedImageBlob || await getCroppedImageBlob();
       if (!finalCroppedBlob) throw new Error('크롭된 이미지를 가져올 수 없습니다.');
 
       const timestamp = Date.now();
@@ -145,7 +152,7 @@ export function renderCaptureView(container) {
 
       await saveImageToOpfs(finalCroppedBlob, `crop_${timestamp}.png`);
       await saveImageToOpfs(fullImageBlob, `full_${timestamp}.jpg`);
-      await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng, address: addressInput.value.trim() });
+      await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng });
 
       saveSheet.hidden = true;
       showNotice('도감에 저장했어요', `${charId} 기록을 추가했습니다.`, 'success');
@@ -159,8 +166,9 @@ export function renderCaptureView(container) {
   });
 
   function resetToCaptureState() {
-    destroyScanner(); // 직접 임포트된 함수 호출
-    scanCanvas.hidden = true;
+    cropper?.destroy();
+    cropper = null;
+    sourceImg.hidden = true;
     sourceImg.src = ''; // 메모리 해제를 위해 src 초기화
     cropHint.hidden = true;
     video.hidden = false;
@@ -175,7 +183,21 @@ export function renderCaptureView(container) {
   btnCancel.addEventListener('click', resetToCaptureState);
 
   startCamera();
-  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyScanner(); terminateOcrWorker(); };
+  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; cropper?.destroy(); cropper = null; terminateOcrWorker(); };
+}
+
+function getCroppedImageBlob() {
+  if (!cropper) return Promise.reject(new Error('크로퍼가 초기화되지 않았습니다.'));
+
+  const canvas = cropper.getCroppedCanvas({
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  });
+  if (!canvas) return Promise.reject(new Error('크롭 영역을 만들지 못했습니다.'));
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('크롭 이미지를 만들지 못했습니다.')), 'image/png');
+  });
 }
 
 async function capturePhoto(video) {
