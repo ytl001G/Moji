@@ -1,0 +1,96 @@
+import { getAllCollectedItems } from '../db/index.js';
+import { getImageUrlFromOpfs } from '../db/opfs.js';
+
+export async function renderPosterView(container) {
+  container.innerHTML = `
+    <div class="poster-view-container" style="padding: 16px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; background: #121212;">
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="poster-text-input" placeholder="조합할 문자를 입력하세요 (예: あい)" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #fff; font-size: 0.9rem;" value="あ" />
+        <button id="btn-generate-poster" style="padding: 12px 18px; border-radius: 8px; border: none; background: #ff3b30; color: #fff; font-weight: bold; cursor: pointer;">생성</button>
+      </div>
+
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; padding: 10px;">
+        <canvas id="poster-canvas" width="600" height="800" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);"></canvas>
+      </div>
+
+      <button id="btn-download-poster" style="width: 100%; padding: 14px; border-radius: 12px; border: none; background: #30d158; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer;">
+        🖼️ 포스터 이미지 저장
+      </button>
+    </div>
+  `;
+
+  const input = container.querySelector('#poster-text-input');
+  const btnGenerate = container.querySelector('#btn-generate-poster');
+  const btnDownload = container.querySelector('#btn-download-poster');
+  const canvas = container.querySelector('#poster-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const collectedItems = await getAllCollectedItems();
+
+  // 포스터 그리기 함수
+  async function drawPoster(text) {
+    // 배경 그리기 (어두운 레트로 포스터 테마)
+    ctx.fillStyle = '#fff7e8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 상단 타이틀
+    ctx.fillStyle = '#9e7041';
+    ctx.font = 'bold 28px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Moji Travel Letter', canvas.width / 2, 50);
+
+    const chars = text.split('');
+    if (chars.length === 0) return;
+
+    const cols = Math.min(chars.length, 3);
+    const rows = Math.ceil(chars.length / cols);
+    const boxSize = 140;
+    const gap = 20;
+
+    const startX = (canvas.width - (cols * boxSize + (cols - 1) * gap)) / 2;
+    const startY = 120;
+
+    for (let i = 0; i < chars.length; i++) {
+      const char = chars[i];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (boxSize + gap);
+      const y = startY + row * (boxSize + gap);
+
+      // 해당 글자가 DB에 수집되어 있는지 확인
+      const matched = collectedItems.find(item => item.charId === char);
+
+      if (matched) {
+        const imgUrl = await getImageUrlFromOpfs(matched.cropFileName);
+        const img = new Image();
+        img.src = imgUrl;
+        await new Promise(r => img.onload = r);
+
+        ctx.drawImage(img, x, y, boxSize, boxSize);
+        ctx.strokeStyle = '#b96d58';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, boxSize, boxSize);
+      } else {
+        // 미수집 글자는 회색 프레임으로 대체
+        ctx.fillStyle = '#eee0ca';
+        ctx.fillRect(x, y, boxSize, boxSize);
+        ctx.fillStyle = '#725b48';
+        ctx.font = 'bold 40px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(char, x + boxSize / 2, y + boxSize / 2);
+      }
+    }
+  }
+
+  btnGenerate.addEventListener('click', () => drawPoster(input.value.trim()));
+  btnDownload.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = `moji_poster_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // 초기 렌더링
+  drawPoster(input.value.trim());
+}

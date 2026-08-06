@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Moji - 일본 간판 수집 도감</title>
+
+  <script>
+    window.global = window;
+    window.process = window.process || { env: {}, versions: { node: '18.0.0' } };
+    
+    // util.debuglog 에러 방지용 빈 함수 주입 (가장 확실한 해결책)
+    if (!window.util) window.util = {};
+    if (!window.util.debuglog) {
+      window.util.debuglog = function() {
+        return function() {};
+      };
+    }
+  </script>
+
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#f4efe4" />
+
+  <link rel="stylesheet" href="./src/assets/styles/main.css" />
+  <link rel="stylesheet" href="./src/assets/styles/thumb-zone.css" />
+  <link rel="stylesheet" href="./src/assets/styles/card-3d.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1 class="logo">Moji <span>文字</span></h1>
+      <div id="stats-badge" class="stats-badge">수집률 0% (0/0)</div>
+    </header>
+
+    <main id="main-content" class="display-zone"></main>
+
+    <nav class="thumb-zone">
+      <div class="nav-cluster">
+        <button id="nav-collection" class="nav-btn active" type="button">
+          <span class="icon">📖</span>
+          <span class="label">도감</span>
+        </button>
+
+        <button id="btn-camera-shutter" class="shutter-btn" type="button">
+          <div class="shutter-inner">📷</div>
+        </button>
+
+        <button id="nav-map" class="nav-btn" type="button">
+          <span class="icon">🗺️</span>
+          <span class="label">지도</span>
+        </button>
+
+        <button id="nav-poster" class="nav-btn" type="button">
+          <span class="icon">🖼️</span>
+          <span class="label">포스터</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

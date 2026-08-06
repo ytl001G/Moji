@@ -1,0 +1,76 @@
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import path from 'node:path'; // path 모듈 임포트 (Node.js 22+ 권장)
+
+
+export default defineConfig({
+  // Relative asset paths keep the app working under /<repository-name>/ on GitHub Pages.
+  base: './',
+  root: '.',
+  publicDir: 'public',
+  
+  // 🔥 Node.js 호환성 문제 (process, util.debuglog 등) 완전 방지
+  define: {
+    'process.env': {},
+    'process.versions': { node: '18.0.0' },
+    // 'util' 모듈은 resolve.alias를 통해 더 강력하게 대체합니다.
+    // define은 전역 변수나 속성 대체에 더 적합합니다.
+    global: 'window',
+  },
+
+  // Node.js 내장 모듈을 브라우저 호환 버전으로 대체
+  resolve: {
+    alias: {
+      // 'util' 모듈은 index.html에서 전역적으로 폴리필되므로 여기서 제거
+    },
+  },
+
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/tesseract.js')) return 'tesseract';
+          if (id.includes('node_modules/dexie')) return 'dexie';
+          if (id.includes('node_modules/cropperjs')) return 'cropper';
+        }
+      }
+    }
+  },
+  plugins: [
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/*.png'],
+      manifest: {
+        name: 'Moji - 일본 간판 수집 도감',
+        short_name: 'Moji',
+        description: '일본 현지 간판의 글자를 수집하고 나만의 도감을 만드는 앱',
+        theme_color: '#f4efe4',
+        background_color: '#f4efe4',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: './',
+        icons: [
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}']
+      }
+    })
+  ],
+  server: {
+    port: 3000,
+    open: true,
+    host: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp'
+    }
+  }
+});
