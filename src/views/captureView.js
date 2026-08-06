@@ -61,6 +61,7 @@ export function renderCaptureView(container) {
       currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
       video.srcObject = currentStream;
       await video.play();
+      await new Promise(resolve => setTimeout(resolve, 100)); // 비디오 스트림이 안정화될 시간을 줍니다.
       cameraReady = video.videoWidth > 0 && video.videoHeight > 0;
       btnSnap.disabled = !cameraReady;
     } catch (error) {
@@ -73,7 +74,8 @@ export function renderCaptureView(container) {
     btnSnap.disabled = true;
     try {
       fullImageBlob = await capturePhoto(video);
-      if (!fullImageBlob) throw new Error('사진을 만들지 못했습니다.');
+      console.log('Captured fullImageBlob:', fullImageBlob, 'Type:', fullImageBlob?.type, 'Size:', fullImageBlob?.size);
+      if (!fullImageBlob || fullImageBlob.size === 0) throw new Error('사진을 만들지 못했습니다. (빈 이미지)');
 
       const objectURL = URL.createObjectURL(fullImageBlob);
       await new Promise((resolve) => {
@@ -84,7 +86,7 @@ export function renderCaptureView(container) {
         cropImg.onerror = (e) => {
           URL.revokeObjectURL(objectURL); // 에러 발생 시에도 URL 해제
           showNotice('이미지 로드 실패', e.message || '사진을 표시할 수 없습니다.', 'error');
-          resolve(); // 에러 발생 시에도 Promise는 resolve하여 다음 로직 진행
+          reject(new Error('이미지 로드 실패')); // 에러 발생 시 Promise를 reject하여 외부 catch 블록에서 처리
         };
         cropImg.src = objectURL; // Blob으로부터 생성된 URL 할당
       });
