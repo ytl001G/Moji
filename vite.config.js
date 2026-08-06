@@ -31,8 +31,8 @@ export default defineConfig({
     sourcemap: false,
     minify: 'terser',
     rollupOptions: {
+      // Node.js 내장 모듈 외부화 관련 경고 무시 (jsdom/undici 등에서 발생)
       onwarn(warning, warn) {
-        // Node.js 내장 모듈 외부화 관련 경고 무시 (jsdom/undici 등에서 발생)
         if (warning.code === 'MODULE_EXTERNAL_EXTERNALIZED' && warning.message.includes('node:')) {
           return;
         }
@@ -42,7 +42,8 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/dexie')) return 'dexie';
           if (id.includes('node_modules/cropperjs')) return 'cropper';
-          if (id.includes('node_modules/jscanify')) return 'jscanify'; // jscanify를 별도 청크로 분리
+          // jscanify 및 그 무거운 의존성(jsdom, canvas)을 하나의 청크로 명시적으로 분리
+          if (id.includes('node_modules/jscanify') || id.includes('node_modules/jsdom') || id.includes('node_modules/canvas')) return 'jscanify-bundle';
         }
       }
     }

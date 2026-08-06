@@ -1,5 +1,3 @@
-import jscanify from 'jscanify';
-
 let scannerInstance = null;
 
 /**
@@ -9,14 +7,16 @@ let scannerInstance = null;
  */
 export function initScanner(canvasElement, imageElement) {
   if (scannerInstance) {
-    scannerInstance = null;
+    scannerInstance.destroy(); // jscanify 인스턴스에 destroy 메서드가 있다면 호출
   }
   // 캔버스의 크기를 원본 이미지와 동일하게 설정합니다.
   canvasElement.width = imageElement.naturalWidth;
   canvasElement.height = imageElement.naturalHeight;
 
   const ctx = canvasElement.getContext('2d');
-  ctx.drawImage(imageElement, 0, 0);
+  ctx.clearRect(0, 0, canvasElement.width, canvasElement.height); // 기존 내용 지우기
+  ctx.drawImage(imageElement, 0, 0); // 원본 이미지 그리기
+
 
   // jscanify를 캔버스에 적용합니다. 라이브러리가 자동으로 모서리 핸들을 그립니다.
   scannerInstance = new jscanify(canvasElement);
@@ -33,7 +33,7 @@ export function getScannedImageBlob() {
       return;
     }
 
-    const resultCanvas = scannerInstance.getScannedImage();
+    const resultCanvas = scannerInstance.getScannedImage(); // jscanify 인스턴스에서 스캔된 이미지 가져오기
     resultCanvas.toBlob((blob) => {
       if (blob) {
         resolve(blob);

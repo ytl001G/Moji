@@ -8,7 +8,7 @@ let workerPromise = null;
 /**
  * Tesseract.js Worker 초기화 (일본어 전용 데이터 로드)
  */
-async function getOcrWorker() {
+export async function getOcrWorker() {
   if (!workerPromise) {
     // createWorker는 시간이 걸리는 작업이므로 Promise를 저장해둡니다.
     workerPromise = (async () => {
