@@ -201,15 +201,8 @@ function getCroppedImageBlob() {
 }
 
 async function capturePhoto(video) {
-  const track = currentStream?.getVideoTracks()[0];
-  // ImageCapture returns the camera's still-photo resolution on supporting phones.
-  if (track && 'ImageCapture' in window) {
-    try {
-      return await new ImageCapture(track).takePhoto();
-    } catch {
-      // Fall back to the video frame for browsers without still-photo capture support.
-    }
-  }
+  // Capture the exact frame shown in the preview. ImageCapture.takePhoto() can use a
+  // different sensor aspect ratio, which makes the captured image look reframed.
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
