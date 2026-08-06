@@ -3,6 +3,8 @@ import 'cropperjs/dist/cropper.css';
 import { recognizeChar, terminateOcrWorker } from '../services/ocr.js';
 import { extractExifData } from '../utils/exif.js';
 import { showNotice } from '../components/notice.js';
+import { addCollectionItem } from '../db/index.js';
+import { saveImageToOpfs } from '../db/opfs.js';
 
 let currentStream = null;
 let cropper = null;
