@@ -14,7 +14,6 @@ export function renderCaptureView(container) {
         <video id="camera-video" autoplay playsinline></video>
         <img id="crop-target-img" alt="촬영한 이미지" hidden>
         <p id="crop-hint" class="crop-hint" hidden>네 모서리를 조절하여 글자 영역을 맞춰 주세요.</p>
-        <div id="loading-spinner" hidden>사진을 정리하고 글자를 읽는 중…</div>
       </div>
       <div class="capture-controls">
         <button id="btn-snap" type="button" disabled aria-label="사진 촬영">●</button>
@@ -38,7 +37,6 @@ export function renderCaptureView(container) {
   const video = container.querySelector('#camera-video');
   const sourceImg = container.querySelector('#crop-target-img');
   const cropHint = container.querySelector('#crop-hint');
-  const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
   const btnSave = container.querySelector('#btn-save-crop');
   const btnCancel = container.querySelector('#btn-cancel');
@@ -130,7 +128,6 @@ export function renderCaptureView(container) {
 
   btnSave.addEventListener('click', async () => {
     btnSave.disabled = true;
-    spinner.hidden = false;
     try {
       croppedImageBlob = await getCroppedImageBlob();
       const recognized = await recognizeChar(croppedImageBlob);
@@ -140,7 +137,6 @@ export function renderCaptureView(container) {
     } catch (error) {
       console.error('OCR 처리 중 오류:', error);
     } finally {
-      spinner.hidden = true;
       btnSave.disabled = false;
       saveSheet.hidden = false;
       // btnSave.hidden = false; // 이 줄은 이제 불필요합니다.
@@ -156,7 +152,6 @@ export function renderCaptureView(container) {
 
     const submitButton = saveSheet.querySelector('[type="submit"]');
     submitButton.disabled = true;
-    spinner.hidden = false;
 
     try {
       const finalCroppedBlob = croppedImageBlob || await getCroppedImageBlob();
@@ -175,7 +170,6 @@ export function renderCaptureView(container) {
     } catch (error) {
       showNotice('저장하지 못했어요', error.message || '잠시 후 다시 시도해 주세요.', 'error');
     } finally {
-      spinner.hidden = true;
       submitButton.disabled = false;
     }
   });
