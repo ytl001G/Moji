@@ -45,6 +45,7 @@ export function renderCaptureView(container) {
   const saveSheet = container.querySelector('#save-sheet');
   const charInput = container.querySelector('#save-char');
   let fullImageBlob = null;
+  let sourceObjectUrl = null;
   let croppedImageBlob = null;
   let cameraReady = false;
 
@@ -73,22 +74,23 @@ export function renderCaptureView(container) {
       console.log('Captured fullImageBlob:', fullImageBlob, 'Type:', fullImageBlob?.type, 'Size:', fullImageBlob?.size);
       if (!fullImageBlob || fullImageBlob.size === 0) throw new Error('사진을 만들지 못했습니다. (빈 이미지)');
 
-      const objectURL = URL.createObjectURL(fullImageBlob);
+      sourceObjectUrl && URL.revokeObjectURL(sourceObjectUrl);
+      sourceObjectUrl = URL.createObjectURL(fullImageBlob);
       await new Promise((resolve, reject) => {
         sourceImg.onload = () => {
           sourceImg.onload = null;
           sourceImg.onerror = null;
-          URL.revokeObjectURL(objectURL);
           resolve();
         };
         sourceImg.onerror = (e) => {
           sourceImg.onload = null;
           sourceImg.onerror = null;
-          URL.revokeObjectURL(objectURL);
+          URL.revokeObjectURL(sourceObjectUrl);
+          sourceObjectUrl = null;
           showNotice('이미지 로드 실패', e.message || '사진을 표시할 수 없습니다.', 'error');
           reject(new Error('이미지 로드 실패'));
         };
-        sourceImg.src = objectURL;
+        sourceImg.src = sourceObjectUrl;
       });
       video.hidden = true;
       sourceImg.hidden = false;
@@ -112,6 +114,9 @@ export function renderCaptureView(container) {
           });
         },
       });
+      // Some mobile browsers do not dispatch Cropper's ready event reliably for
+      // an already-decoded Blob image. Attach the visible handles independently.
+      window.setTimeout(() => cropper && attachCornerHandles(cropper), 120);
       cropHint.hidden = false;
       btnSnap.hidden = true;
       btnCancel.hidden = false;
@@ -182,6 +187,10 @@ export function renderCaptureView(container) {
     sourceImg.onload = null;
     sourceImg.onerror = null;
     sourceImg.removeAttribute('src');
+    if (sourceObjectUrl) {
+      URL.revokeObjectURL(sourceObjectUrl);
+      sourceObjectUrl = null;
+    }
     cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
@@ -195,7 +204,7 @@ export function renderCaptureView(container) {
   btnCancel.addEventListener('click', resetToCaptureState);
 
   startCamera();
-  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; cropper?.destroy(); cropper = null; terminateOcrWorker(); };
+  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; cropper?.destroy(); cropper = null; if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl); terminateOcrWorker(); };
 }
 
 function getCroppedImageBlob() {
