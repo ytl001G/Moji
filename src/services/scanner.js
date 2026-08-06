@@ -1,4 +1,6 @@
-import jscanify from 'jscanify'; // jscanify 라이브러리 임포트
+import jscanify from 'jscanify/client'; // Browser build; the package default targets Node.
+
+let scannerInstance = null;
 
 /**
  * jscanify를 특정 canvas 요소에 초기화합니다.
