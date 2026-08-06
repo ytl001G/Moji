@@ -13,6 +13,7 @@ export function renderCaptureView(container) {
       <div id="camera-preview-zone">
         <video id="camera-video" autoplay playsinline></video>
         <img id="crop-target-img" alt="촬영한 이미지" hidden>
+        <p id="crop-hint" class="crop-hint" hidden>드래그하여 저장할 글자 영역을 맞춰 주세요.</p>
         <div id="loading-spinner" hidden>사진을 정리하고 글자를 읽는 중…</div>
       </div>
       <div class="capture-controls">
@@ -37,6 +38,7 @@ export function renderCaptureView(container) {
 
   const video = container.querySelector('#camera-video');
   const cropImg = container.querySelector('#crop-target-img');
+  const cropHint = container.querySelector('#crop-hint');
   const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
   const btnSave = container.querySelector('#btn-save-crop');
@@ -68,11 +70,7 @@ export function renderCaptureView(container) {
     spinner.hidden = false;
     btnSnap.disabled = true;
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      fullImageBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.98));
+      fullImageBlob = await capturePhoto(video);
       if (!fullImageBlob) throw new Error('사진을 만들지 못했습니다.');
       await new Promise((resolve) => {
         cropImg.onload = resolve;
@@ -81,6 +79,7 @@ export function renderCaptureView(container) {
       });
       video.hidden = true;
       cropImg.hidden = false;
+      cropHint.hidden = false;
       btnSnap.hidden = true;
       btnSave.hidden = false;
       btnCancel.hidden = false;
@@ -126,6 +125,7 @@ export function renderCaptureView(container) {
   btnCancel.addEventListener('click', () => {
     destroyCropper();
     cropImg.hidden = true;
+    cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
     btnSnap.disabled = false;
@@ -135,4 +135,21 @@ export function renderCaptureView(container) {
 
   startCamera();
   return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyCropper(); };
+}
+
+async function capturePhoto(video) {
+  const track = currentStream?.getVideoTracks()[0];
+  // ImageCapture returns the camera's still-photo resolution on supporting phones.
+  if (track && 'ImageCapture' in window) {
+    try {
+      return await new ImageCapture(track).takePhoto();
+    } catch {
+      // Fall back to the video frame for browsers without still-photo capture support.
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.98));
 }

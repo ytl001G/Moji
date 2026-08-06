@@ -14,9 +14,9 @@ export function initCropper(imageElement) {
 
   cropperInstance = new Cropper(imageElement, {
     aspectRatio: NaN, // 정사각형에 구애받지 않는 자유 자르기
-    viewMode: 1,
-    dragMode: 'move',
-    autoCropArea: 0.5,
+    viewMode: 0,
+    dragMode: 'crop',
+    autoCropArea: 0.82,
     restore: false,
     guides: true,
     center: true,
@@ -41,8 +41,8 @@ export function getCroppedCanvasBlob() {
     }
 
     const canvas = cropperInstance.getCroppedCanvas({
-      maxWidth: 800,
-      maxHeight: 800,
+      maxWidth: 2048,
+      maxHeight: 2048,
       fillColor: '#fff',
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high',
