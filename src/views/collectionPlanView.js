@@ -12,6 +12,7 @@ export async function renderCollectionPlanView(container) {
         <button class="tab-btn" data-type="katakana" type="button">가타카나</button>
         <button class="tab-btn" data-type="kanji" type="button">한자</button>
       </div>
+      <div id="kana-column-guide" class="kana-column-guide" aria-hidden="true"><span>a</span><span>i</span><span>u</span><span>e</span><span>o</span></div>
       <p id="search-summary" class="search-summary"></p>
       <div id="grid-container" class="character-grid"></div>
     </section>
@@ -20,6 +21,7 @@ export async function renderCollectionPlanView(container) {
   const grid = container.querySelector('#grid-container');
   const input = container.querySelector('#character-search');
   const summary = container.querySelector('#search-summary');
+  const columnGuide = container.querySelector('#kana-column-guide');
   let activeType = 'hiragana';
   let characters = [];
   let collectedMap = new Map();
@@ -28,6 +30,7 @@ export async function renderCollectionPlanView(container) {
     grid.innerHTML = '<p class="grid-message">도감을 펼치는 중…</p>';
     const [dataModule, collected] = await Promise.all([loadCharacterData(type), db.collections.toArray()]);
     characters = sortByKanaRow(dataModule.default);
+    columnGuide.hidden = type === 'kanji';
     collectedMap = new Map();
     collected.forEach((item) => {
       const records = collectedMap.get(item.charId) || [];
@@ -52,6 +55,8 @@ export async function renderCollectionPlanView(container) {
       card.type = 'button';
       const startsRow = index === 0 || item.row !== filtered[index - 1].row;
       card.className = `collection-card ${records.length ? 'is-collected' : ''} ${startsRow ? 'row-start' : ''}`;
+      const column = getKanaColumn(item, characters);
+      if (column) card.style.gridColumnStart = column;
       card.setAttribute('aria-label', `${item.id} ${records.length ? '수집됨' : '미수집'}`);
       if (records.length) {
         const imageUrl = await getImageUrlFromOpfs(records.at(-1).cropFileName);
@@ -81,6 +86,14 @@ function loadCharacterData(type) {
     kanji: () => import('../data/ja/kanji.json')
   };
   return loaders[type]();
+}
+
+function getKanaColumn(item, allCharacters) {
+  if (!item.row) return null;
+  const indexInRow = allCharacters.filter((character) => character.row === item.row).findIndex((character) => character.id === item.id);
+  // In the y row, the absent yi/ye columns remain intentionally empty.
+  if (item.row === 'ya') return [1, 3, 5][indexInRow] || null;
+  return indexInRow + 1;
 }
 
 function sortByKanaRow(characters) {
