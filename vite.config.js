@@ -49,6 +49,8 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      // main.js registers the worker so it can activate an update immediately.
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
         name: 'Moji - 일본 간판 수집 도감',
