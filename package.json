@@ -13,7 +13,8 @@
     "dexie": "^3.2.4",
     "exifreader": "^4.20.0",
     "jscanify": "^1.2.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "vite": "^8.2.0",

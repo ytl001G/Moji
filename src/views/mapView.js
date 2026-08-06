@@ -1,7 +1,9 @@
 import { getAllCollectedItems } from '../db/index.js';
 import { showNotice } from '../components/notice.js';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-const MAP_PADDING = 12;
+const DEFAULT_MAP_CENTER = [35.6812, 139.7671];
 
 export async function renderMapView(container) {
   const items = await getAllCollectedItems();
@@ -17,10 +19,8 @@ export async function renderMapView(container) {
         <span class="map-count">${locatedItems.length} places</span>
       </div>
       <p class="map-intro">사진에 기록된 위치를 따라, 만난 글자들을 여행 지도에 남겨요.</p>
-      <div class="paper-map" role="img" aria-label="수집한 글자의 위치 지도">
-        <span class="map-route route-one"></span>
-        <span class="map-route route-two"></span>
-        <div id="map-pins" class="map-pins"></div>
+      <div class="leaflet-map-wrap">
+        <div id="leaflet-map" class="leaflet-map" aria-label="수집한 글자의 위치 지도"></div>
         <p id="map-empty" class="map-empty">아직 기록된 위치가 없어요.<br>다음 사진을 찍을 때 위치 권한을 허용해 보세요.</p>
       </div>
       <div class="map-records">
@@ -30,26 +30,37 @@ export async function renderMapView(container) {
     </section>
   `;
 
-  const pins = container.querySelector('#map-pins');
+  const mapElement = container.querySelector('#leaflet-map');
   const empty = container.querySelector('#map-empty');
   const list = container.querySelector('#map-record-list');
+  const map = L.map(mapElement, { zoomControl: true, attributionControl: true }).setView(DEFAULT_MAP_CENTER, 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(map);
 
   if (!locatedItems.length) {
     empty.hidden = false;
   } else {
     empty.hidden = true;
-    const bounds = getBounds(locatedItems);
     locatedItems.forEach((item, index) => {
-      const pin = document.createElement('button');
-      pin.type = 'button';
-      pin.className = 'map-pin';
-      pin.textContent = item.charId || '字';
-      pin.style.left = `${scale(item.lng, bounds.minLng, bounds.maxLng)}%`;
-      pin.style.top = `${100 - scale(item.lat, bounds.minLat, bounds.maxLat)}%`;
-      pin.title = item.address || `수집 기록 ${index + 1}`;
-      pin.addEventListener('click', () => showRecord(item));
-      pins.appendChild(pin);
+      const marker = L.marker([item.lat, item.lng], {
+        title: item.address || `수집 기록 ${index + 1}`,
+        icon: L.divIcon({
+          className: 'moji-map-marker-wrap',
+          html: `<span class="moji-map-marker">${escapeHtml(item.charId || '字')}</span>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 38],
+        }),
+      }).addTo(map);
+      marker.bindPopup(`<strong>${escapeHtml(item.charId || '글자')}</strong><br>${escapeHtml(item.address || formatDate(item.createdAt))}`);
+      marker.on('click', () => showRecord(item));
     });
+
+    const bounds = L.latLngBounds(locatedItems.map((item) => [item.lat, item.lng]));
+    if (locatedItems.length === 1) map.setView(bounds.getCenter(), 16);
+    else map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
   }
 
   const recentItems = [...items].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 6);
@@ -69,20 +80,14 @@ export async function renderMapView(container) {
   });
 }
 
-function getBounds(items) {
-  const lats = items.map((item) => item.lat);
-  const lngs = items.map((item) => item.lng);
-  return { minLat: Math.min(...lats), maxLat: Math.max(...lats), minLng: Math.min(...lngs), maxLng: Math.max(...lngs) };
-}
-
-function scale(value, min, max) {
-  if (min === max) return 50;
-  return MAP_PADDING + ((value - min) / (max - min)) * (100 - MAP_PADDING * 2);
-}
-
 function showRecord(item) {
-  const date = item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '날짜 미상';
+  const date = formatDate(item.createdAt, true);
   showNotice(item.charId || '글자', `${item.address || '주소 기록 없음'} · ${date}`);
+}
+
+function formatDate(value, withTime = false) {
+  if (!value) return '날짜 미상';
+  return new Date(value).toLocaleString('ko-KR', withTime ? undefined : { dateStyle: 'medium' });
 }
 
 function escapeHtml(value) {

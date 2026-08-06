@@ -106,8 +106,10 @@ export function renderCaptureView(container) {
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
         ready() {
-          // Wait one frame for the visible preview container to finish layout.
-          requestAnimationFrame(() => cropper?.crop());
+          requestAnimationFrame(() => {
+            cropper?.crop();
+            if (cropper) attachCornerHandles(cropper);
+          });
         },
       });
       cropHint.hidden = false;
@@ -208,6 +210,60 @@ function getCroppedImageBlob() {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('크롭 이미지를 만들지 못했습니다.')), 'image/png');
   });
+}
+
+function attachCornerHandles(instance) {
+  const host = instance.cropper;
+  if (!host || host.querySelector('.manual-crop-handles')) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'manual-crop-handles';
+  const corners = ['nw', 'ne', 'sw', 'se'].map((corner) => {
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = `manual-crop-handle ${corner}`;
+    handle.setAttribute('aria-label', `${corner} 모서리 조절`);
+    overlay.appendChild(handle);
+    return { corner, handle };
+  });
+  host.appendChild(overlay);
+
+  const render = () => {
+    const box = instance.getCropBoxData();
+    corners.forEach(({ corner, handle }) => {
+      handle.style.left = `${corner.includes('w') ? box.left : box.left + box.width}px`;
+      handle.style.top = `${corner.includes('n') ? box.top : box.top + box.height}px`;
+    });
+  };
+
+  corners.forEach(({ corner, handle }) => {
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture(event.pointerId);
+      const start = instance.getCropBoxData();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const move = (moveEvent) => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        const next = { ...start };
+        if (corner.includes('w')) { next.left += dx; next.width -= dx; } else next.width += dx;
+        if (corner.includes('n')) { next.top += dy; next.height -= dy; } else next.height += dy;
+        if (next.width < 48 || next.height < 48) return;
+        instance.setCropBoxData(next);
+        render();
+      };
+      const end = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', end);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+    });
+  });
+  instance.element.addEventListener('crop', render);
+  render();
 }
 
 async function capturePhoto(video) {
