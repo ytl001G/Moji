@@ -11,6 +11,7 @@
   "dependencies": {
     "cropperjs": "^1.6.1",
     "dexie": "^3.2.4",
+    "exifreader": "^4.42.0",
     "jscanify": "^1.2.0",
     "jszip": "^3.10.1",
     "tesseract.js": "^5.0.4"
