@@ -23,7 +23,7 @@ export async function extractExifData(file) {
           });
         },
         () => resolve(defaultData),
-        { timeout: 3000 }
+        { timeout: 1000, maximumAge: 60000 }
       );
     } else {
       resolve(defaultData);
