@@ -1,29 +1,52 @@
-// `jscanify`'s package root resolves to its Node.js build.  Use the explicit
-// browser entry point so Vite does not bundle Node built-ins (`fs`, `url`, etc.).
-import jscanify from 'jscanify/client';
+import jscanify from 'jscanify';
 
-const scanner = new jscanify();
+let scannerInstance = null;
 
 /**
- * 이미지(HTMLImageElement/Canvas/Blob)를 받아 간판 윤곽을 자동 인식하고 정면으로 펼쳐진 Canvas를 반환합니다.
- * @param {HTMLImageElement|HTMLCanvasElement} imageElement - 보정할 원본 이미지
- * @returns {Promise<HTMLCanvasElement>} 수평/투시 보정이 완료된 Canvas
+ * jscanify를 특정 canvas 요소에 초기화합니다.
+ * @param {HTMLCanvasElement} canvasElement - 스캔을 진행할 <canvas> 요소
+ * @param {HTMLImageElement} imageElement - 원본 이미지가 담긴 <img> 요소
  */
-export async function extractAndAlignSignboard(imageElement) {
+export function initScanner(canvasElement, imageElement) {
+  if (scannerInstance) {
+    scannerInstance = null;
+  }
+  // 캔버스의 크기를 원본 이미지와 동일하게 설정합니다.
+  canvasElement.width = imageElement.naturalWidth;
+  canvasElement.height = imageElement.naturalHeight;
+
+  const ctx = canvasElement.getContext('2d');
+  ctx.drawImage(imageElement, 0, 0);
+
+  // jscanify를 캔버스에 적용합니다. 라이브러리가 자동으로 모서리 핸들을 그립니다.
+  scannerInstance = new jscanify(canvasElement);
+}
+
+/**
+ * 현재 선택된 영역을 원근 보정하여 Blob 이미지로 추출합니다.
+ * @returns {Promise<Blob>} 보정된 글자 이미지 Blob
+ */
+export function getScannedImageBlob() {
   return new Promise((resolve, reject) => {
-    try {
-      // jscanify로 기울어진 간판 모서리를 인식하여 정면 직사각형으로 투시 변환 (Perspective Transform)
-      const resultCanvas = scanner.extractPaper(imageElement, 1000, 1000);
-      resolve(resultCanvas);
-    } catch (error) {
-      console.warn('간판 자동 윤곽선 감지 실패, 원본 이미지를 유지합니다:', error);
-      // 윤곽 감지 실패 시 원본 이미지를 Canvas로 담아 반환
-      const fallbackCanvas = document.createElement('canvas');
-      fallbackCanvas.width = imageElement.width || imageElement.naturalWidth;
-      fallbackCanvas.height = imageElement.height || imageElement.naturalHeight;
-      const ctx = fallbackCanvas.getContext('2d');
-      ctx.drawImage(imageElement, 0, 0);
-      resolve(fallbackCanvas);
+    if (!scannerInstance) {
+      reject(new Error('Scanner가 초기화되지 않았습니다.'));
+      return;
     }
+
+    const resultCanvas = scannerInstance.getScannedImage();
+    resultCanvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('스캔 이미지 생성에 실패했습니다.'));
+      }
+    }, 'image/png');
   });
+}
+
+/**
+ * jscanify 인스턴스 참조를 해제합니다.
+ */
+export function destroyScanner() {
+  scannerInstance = null;
 }

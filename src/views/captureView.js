@@ -1,4 +1,4 @@
-import { initCropper, getCroppedCanvasBlob, destroyCropper } from '../services/cropper.js';
+import { initScanner, getScannedImageBlob, destroyScanner } from '../services/scanner.js';
 import { recognizeChar, terminateOcrWorker } from '../services/ocr.js';
 import { saveImageToOpfs } from '../db/opfs.js';
 import { addCollectionItem } from '../db/index.js';
@@ -12,8 +12,9 @@ export function renderCaptureView(container) {
     <div class="capture-container">
       <div id="camera-preview-zone">
         <video id="camera-video" autoplay playsinline></video>
-        <img id="crop-target-img" alt="촬영한 이미지" hidden style="display: none;">
-        <p id="crop-hint" class="crop-hint" hidden>드래그하여 저장할 글자 영역을 맞춰 주세요.</p>
+        <img id="source-img" alt="촬영한 이미지" hidden style="display: none;">
+        <canvas id="scan-canvas" hidden></canvas>
+        <p id="crop-hint" class="crop-hint" hidden>네 모서리를 조절하여 글자 영역을 맞춰 주세요.</p>
         <div id="loading-spinner" hidden>사진을 정리하고 글자를 읽는 중…</div>
       </div>
       <div class="capture-controls">
@@ -38,7 +39,8 @@ export function renderCaptureView(container) {
   `;
 
   const video = container.querySelector('#camera-video');
-  const cropImg = container.querySelector('#crop-target-img');
+  const sourceImg = container.querySelector('#source-img');
+  const scanCanvas = container.querySelector('#scan-canvas');
   const cropHint = container.querySelector('#crop-hint');
   const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
@@ -79,22 +81,23 @@ export function renderCaptureView(container) {
 
       const objectURL = URL.createObjectURL(fullImageBlob);
       await new Promise((resolve) => {
-        cropImg.onload = () => {
+        sourceImg.onload = () => {
           URL.revokeObjectURL(objectURL); // 이미지 로드 완료 후 URL 해제
           resolve();
         };
-        cropImg.onerror = (e) => {
+        sourceImg.onerror = (e) => {
           URL.revokeObjectURL(objectURL); // 에러 발생 시에도 URL 해제
           showNotice('이미지 로드 실패', e.message || '사진을 표시할 수 없습니다.', 'error');
           reject(new Error('이미지 로드 실패')); // 에러 발생 시 Promise를 reject하여 외부 catch 블록에서 처리
         };
-        cropImg.src = objectURL; // Blob으로부터 생성된 URL 할당
+        sourceImg.src = objectURL; // Blob으로부터 생성된 URL 할당
       });
       video.hidden = true;
-      cropImg.hidden = false;
-      cropImg.style.display = 'block';
+      scanCanvas.hidden = false;
+      initScanner(scanCanvas, sourceImg);
+      cropHint.hidden = false;
       btnSnap.hidden = true;
-      btnStartCrop.hidden = false;
+      btnSave.hidden = false;
       btnCancel.hidden = false;
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error');
@@ -107,7 +110,7 @@ export function renderCaptureView(container) {
     btnSave.disabled = true;
     spinner.hidden = false;
     try {
-      croppedImageBlob = await getCroppedCanvasBlob();
+      croppedImageBlob = await getScannedImageBlob();
       const recognized = await recognizeChar(croppedImageBlob);
       if (recognized) {
         charInput.value = recognized;
@@ -122,12 +125,7 @@ export function renderCaptureView(container) {
       charInput.focus();
     }
   });
-  btnStartCrop.addEventListener('click', () => {
-    initCropper(cropImg);
-    cropHint.hidden = false;
-    btnStartCrop.hidden = true;
-    btnSave.hidden = false;
-  });
+  // '크롭 시작' 버튼은 원근 보정 워크플로우에서는 불필요하므로 제거합니다.
   container.querySelector('#btn-close-sheet').addEventListener('click', () => { saveSheet.hidden = true; });
 
   saveSheet.addEventListener('submit', async (event) => {
@@ -141,7 +139,7 @@ export function renderCaptureView(container) {
 
     try {
       // '글자 선택하기' 버튼을 누를 때 크롭된 이미지를 이미 생성했으므로 재사용합니다.
-      const finalCroppedBlob = croppedImageBlob || await getCroppedCanvasBlob();
+      const finalCroppedBlob = croppedImageBlob || await getScannedImageBlob();
       if (!finalCroppedBlob) throw new Error('크롭된 이미지를 가져올 수 없습니다.');
 
       const timestamp = Date.now();
@@ -163,10 +161,9 @@ export function renderCaptureView(container) {
   });
 
   function resetToCaptureState() {
-    destroyCropper();
-    cropImg.hidden = true;
-    cropImg.style.display = 'none';
-    cropImg.src = ''; // 메모리 해제를 위해 src 초기화
+    destroyScanner();
+    scanCanvas.hidden = true;
+    sourceImg.src = ''; // 메모리 해제를 위해 src 초기화
     cropHint.hidden = true;
     video.hidden = false;
     btnSnap.hidden = false;
@@ -181,7 +178,7 @@ export function renderCaptureView(container) {
   btnCancel.addEventListener('click', resetToCaptureState);
 
   startCamera();
-  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyCropper(); terminateOcrWorker(); };
+  return () => { currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null; destroyScanner(); terminateOcrWorker(); };
 }
 
 async function capturePhoto(video) {
