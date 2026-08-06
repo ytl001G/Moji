@@ -18,7 +18,8 @@ export function renderCaptureView(container) {
       </div>
       <div class="capture-controls">
         <button id="btn-snap" type="button" disabled aria-label="사진 촬영">●</button>
-        <button id="btn-save-crop" type="button" hidden>이 사진으로 저장</button>
+        <button id="btn-start-crop" type="button" hidden>크롭 시작</button>
+        <button id="btn-save-crop" type="button" hidden>글자 선택하기</button>
         <button id="btn-cancel" type="button" hidden>다시 촬영</button>
       </div>
       <form id="save-sheet" class="save-sheet" hidden>
@@ -41,6 +42,7 @@ export function renderCaptureView(container) {
   const cropHint = container.querySelector('#crop-hint');
   const spinner = container.querySelector('#loading-spinner');
   const btnSnap = container.querySelector('#btn-snap');
+  const btnStartCrop = container.querySelector('#btn-start-crop');
   const btnSave = container.querySelector('#btn-save-crop');
   const btnCancel = container.querySelector('#btn-cancel');
   const saveSheet = container.querySelector('#save-sheet');
@@ -79,12 +81,9 @@ export function renderCaptureView(container) {
       });
       video.hidden = true;
       cropImg.hidden = false;
-      cropHint.hidden = false;
       btnSnap.hidden = true;
-      btnSave.hidden = false;
+      btnStartCrop.hidden = false;
       btnCancel.hidden = false;
-      // Start Cropper only after the original photo has fully loaded and is visible.
-      initCropper(cropImg);
       recognizeChar(cropImg.src).then((char) => { if (char) charInput.value = char; }).catch(() => null);
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error');
@@ -97,6 +96,12 @@ export function renderCaptureView(container) {
   btnSave.addEventListener('click', () => {
     saveSheet.hidden = false;
     charInput.focus();
+  });
+  btnStartCrop.addEventListener('click', () => {
+    initCropper(cropImg);
+    cropHint.hidden = false;
+    btnStartCrop.hidden = true;
+    btnSave.hidden = false;
   });
   container.querySelector('#btn-close-sheet').addEventListener('click', () => { saveSheet.hidden = true; });
 
@@ -129,6 +134,7 @@ export function renderCaptureView(container) {
     video.hidden = false;
     btnSnap.hidden = false;
     btnSnap.disabled = false;
+    btnStartCrop.hidden = true;
     btnSave.hidden = true;
     btnCancel.hidden = true;
   });
