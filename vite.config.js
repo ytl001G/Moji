@@ -31,11 +31,18 @@ export default defineConfig({
     sourcemap: false,
     minify: 'terser',
     rollupOptions: {
+      onwarn(warning, warn) {
+        // Node.js 내장 모듈 외부화 관련 경고 무시 (jsdom/undici 등에서 발생)
+        if (warning.code === 'MODULE_EXTERNAL_EXTERNALIZED' && warning.message.includes('node:')) {
+          return;
+        }
+        warn(warning); // 그 외 경고는 정상적으로 출력
+      },
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/tesseract.js')) return 'tesseract';
           if (id.includes('node_modules/dexie')) return 'dexie';
           if (id.includes('node_modules/cropperjs')) return 'cropper';
+          if (id.includes('node_modules/jscanify')) return 'jscanify'; // jscanify를 별도 청크로 분리
         }
       }
     }
@@ -60,7 +67,8 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        // PWA 캐시 제한을 50MB로 늘려 대형 청크도 캐시될 수 있도록 합니다.
+        maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true

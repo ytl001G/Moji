@@ -18,6 +18,7 @@ db.version(1).stores({
  * @returns {Promise<number>} 생성된 ID 값
  */
 export async function addCollectionItem({
+  createdAt,      // 생성 시각 (ISO String)
   charId,         // 문자 ID (예: 'あ', '酒')
   cropFileName,   // OPFS에 저장된 크롭 이미지 파일명
   fullFileName,   // OPFS에 저장된 원본 전경 이미지 파일명
@@ -27,6 +28,7 @@ export async function addCollectionItem({
   isNight = false // 야간 여부 (HDR/시간대 스탬프용)
 }) {
   return await db.collections.add({
+    createdAt,
     charId,
     cropFileName,
     fullFileName,
@@ -34,7 +36,6 @@ export async function addCollectionItem({
     lng,
     address,
     isNight,
-    createdAt: new Date().toISOString()
   });
 }
 

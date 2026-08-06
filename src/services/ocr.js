@@ -1,4 +1,4 @@
-import { createWorker } from 'tesseract.js';
+/* global Tesseract */ // ESLint 등 린터에게 Tesseract가 전역 변수임을 알려줍니다.
 
 let ocrWorker = null;
 
@@ -12,12 +12,9 @@ async function getOcrWorker() {
   if (!workerPromise) {
     // createWorker는 시간이 걸리는 작업이므로 Promise를 저장해둡니다.
     workerPromise = (async () => {
-      // worker, core, lang 파일 경로를 모두 CDN으로 명시하여 빌드 시점에 번들되는 것을 완벽하게 방지합니다.
-      // 이렇게 하면 앱의 초기 로딩 크기가 크게 줄어듭니다.
-      const worker = await createWorker('jpn', 1, {
-        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/worker.min.js',
-        langPath: 'https://tessdata.projectnaptha.com/4.0.0_best',
-        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.4/tesseract-core.wasm.js',
+      // index.html에서 로드한 전역 Tesseract 객체를 사용합니다.
+      // 이렇게 하면 빌드 시점에 tesseract.js가 포함되지 않아 번들 크기가 크게 줄어듭니다.
+      const worker = await Tesseract.createWorker('jpn', 1, {
         cachePath: 'tessdata', // 사용자가 한 번 로드한 언어 데이터를 브라우저에 캐시합니다.
       });
       // 단일 문자 인식 정확도를 높이기 위해 페이지 분할 모드를 '단일 문자'로 설정합니다.
