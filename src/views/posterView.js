@@ -116,7 +116,7 @@ export async function renderPosterView(container) {
     canvas.setPointerCapture(event.pointerId);
     for (let index = posterPieces.length - 1; index >= 0; index -= 1) {
       const piece = posterPieces[index];
-      if (point.x >= piece.x && point.x <= piece.x + piece.width && point.y >= piece.y && point.y <= piece.y + piece.height) {
+      if (isPointInPiece(point, piece)) {
         activePointers.set(event.pointerId, point);
         pointerPieces.set(event.pointerId, index);
         dragging = { index, pointerId: event.pointerId, offsetX: point.x - piece.x, offsetY: point.y - piece.y };
@@ -178,6 +178,28 @@ export async function renderPosterView(container) {
   });
 
   await buildPoster();
+}
+
+/**
+ * Checks if a point is inside a rotated rectangular piece.
+ * @param {{x: number, y: number}} point The point to check.
+ * @param {object} piece The poster piece object, with x, y, width, height, and angle.
+ * @returns {boolean}
+ */
+function isPointInPiece(point, piece) {
+  const { x, y, width, height, angle } = piece;
+  // Translate point to be relative to the piece's center
+  const translatedX = point.x - (x + width / 2);
+  const translatedY = point.y - (y + height / 2);
+  // Rotate the point in the opposite direction of the piece's rotation
+  const sin = Math.sin(-angle);
+  const cos = Math.cos(-angle);
+  const rotatedX = translatedX * cos - translatedY * sin;
+  const rotatedY = translatedX * sin + translatedY * cos;
+  // Check if the rotated point is within the non-rotated piece's bounds (centered at origin)
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  return rotatedX >= -halfWidth && rotatedX <= halfWidth && rotatedY >= -halfHeight && rotatedY <= halfHeight;
 }
 
 async function loadPosterImage(fileName) {
