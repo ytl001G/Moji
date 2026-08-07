@@ -19,13 +19,13 @@ body { background-image: repeating-linear-gradient(84deg, rgba(125, 101, 70, .03
 .logo span { color: var(--primary-color); font-size: .9rem; margin-left: 4px; }
 .stats-badge { font-size: .75rem; background: #f6eee0; border: 1px solid var(--surface-border); padding: 5px 10px; border-radius: 12px; color: var(--accent-color); }
 .display-zone { flex: 1; width: 100%; height: calc(100% - var(--header-height) - var(--thumb-zone-height)); overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; }
-.thumb-zone { /* Styles moved to thumb-zone.css */ }
-.nav-cluster { /* Styles moved to thumb-zone.css */ }
-.nav-cluster::before { /* Styles moved to thumb-zone.css */ }
+.thumb-zone { /* Styles are now fully managed in thumb-zone.css */ }
+.nav-cluster { /* Styles are now fully managed in thumb-zone.css */ }
+.nav-cluster::before { /* Styles are now fully managed in thumb-zone.css */ }
 .nav-btn { z-index:1; min-width:52px; padding:6px 2px; background:none; border:0; color:var(--text-sub); display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; flex:1; transition:color .18s, transform .18s; }
 .nav-btn.active { color:var(--primary-color); transform:translateY(-2px); }.nav-btn.active .icon { background:#ead5b9; }
 .nav-btn .icon { display:grid; place-items:center; width:31px; height:29px; border-radius:10px 8px 9px 7px; font-size:1.16rem; }.nav-btn .label { font-size:.68rem; font-weight:800; letter-spacing:-.03em; }
-.shutter-btn { z-index:2; width:59px; height:59px; border-radius:48% 52% 50% 47%; background:linear-gradient(135deg,#c98870,#a96851); border:3px solid #fffaf0; box-shadow:0 3px 0 #9e624e, 0 6px 13px rgba(108,75,55,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; }.shutter-btn:active { transform:scale(.92); }.shutter-inner { font-size:1.4rem; }
+.shutter-btn { z-index:2; width:59px; height:59px; border-radius:48% 52% 50% 47%; background:linear-gradient(135deg,#c98870,#a96851); border:3px solid #fffaf0; box-shadow:0 3px 0 #9e624e, 0 6px 13px rgba(108,75,55,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; }.shutter-btn:active { transform:scale(.92); }.shutter-inner { font-size:1.4rem; } /* margin-top과 transform은 thumb-zone.css에서 오버라이드 */
 
 /* Light paper treatment for the existing views, including their inline legacy colors. */
 .collection-view, .capture-container, .poster-view-container { background: transparent !important; color: var(--text-main) !important; }
@@ -34,8 +34,8 @@ body { background-image: repeating-linear-gradient(84deg, rgba(125, 101, 70, .03
 .capture-container #camera-preview-zone, .poster-view-container > div:nth-child(2) { background: #e9dfcf !important; border: 1px dashed #cdbb9f; }
 .capture-container button, .poster-view-container button { background: #b96d58 !important; color: #fffdf7 !important; }
 .capture-container #loading-spinner { background: rgba(255,253,247,.94) !important; color: #9e7041 !important; border: 1px solid var(--surface-border); }
-.poster-view-container canvas { background: #fff7e8; box-shadow: 0 4px 20px rgba(85,58,32,.18) !important; }
-.capture-container { display:flex; flex-direction:column; height:100%; min-height:0; padding:16px 16px calc(var(--thumb-zone-height) + 18px) !important; }
+.poster-view-container canvas { background: #fff7e8; box-shadow: 0 4px 20px rgba(85,58,32,.18) !important; } /* 포스터 캔버스 스타일 */
+.capture-container { display:flex; flex-direction:column; height:100%; min-height:0; padding:16px 16px calc(var(--thumb-zone-height) + 4px) !important; } /* 하단 패딩을 줄여 카메라 영역 확장 */
 #camera-preview-zone { flex:1 1 auto; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#e9dfcf; border:1px dashed #cdbb9f; border-radius:8px; }
 #camera-preview-zone > [hidden] { display:none !important; }
 #camera-video:not([hidden]) { display:block; width:100%; height:100%; object-fit:contain; }

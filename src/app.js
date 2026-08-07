@@ -5,6 +5,7 @@ let currentViewCleanup = null; // 현재 활성화된 뷰의 정리 함수를 �
 let handleSnapClickRef = null; // captureView에서 설정할 셔터 클릭 핸들러 참조
 let btnShutterGlobal = null; // 전역 카메라/셔터 버튼 참조
 let originalShutterButtonProps = {}; // btnShutterGlobal의 원래 속성을 저장
+let TOTAL_TARGET_CHARS = 0; // 동적으로 계산될 총 글자 수
 
 export async function updateStatsBadge() {
   const statsBadge = document.getElementById('stats-badge');
@@ -13,8 +14,7 @@ export async function updateStatsBadge() {
   try {
     const allCollectedItems = await db.collections.toArray();
     const uniqueCharIds = new Set(allCollectedItems.map(item => item.charId));
-    const collectedCount = uniqueCharIds.size;
-    const TOTAL_TARGET_CHARS = 2228; 
+    const collectedCount = uniqueCharIds.size; 
     const progressPercentage = ((collectedCount / TOTAL_TARGET_CHARS) * 100).toFixed(1);
 
     statsBadge.textContent = `수집률 ${progressPercentage}% (${collectedCount}/${TOTAL_TARGET_CHARS})`;
@@ -60,7 +60,7 @@ export async function navigateTo(viewName) {
       handleSnapClickRef = null; // 참조도 초기화
     }
 
-    // 항상 기본 네비게이션 상태로 복원
+    // 항상 기본 네비게이션 상태로 복원 (shutter-active 클래스도 제거)
     btnShutterGlobal.innerHTML = originalShutterButtonProps.innerHTML; // UI 복원
     btnShutterGlobal.className = originalShutterButtonProps.className; // UI 복원
     btnShutterGlobal.disabled = originalShutterButtonProps.disabled; // UI 복원
@@ -145,7 +145,6 @@ export function initApp() {
   if (btnMap) {
     btnMap.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('🗺️ 지도 버튼 클릭됨');
       navigateTo('map');
     });
   }
@@ -153,10 +152,19 @@ export function initApp() {
   if (btnPoster) {
     btnPoster.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('🖼️ 포스터 버튼 클릭됨');
       navigateTo('poster');
     });
   }
+
+  // 총 글자 수 동적 로드
+  async function loadTotalTargetChars() {
+    const hiragana = (await import('./data/ja/hiragana.json')).default;
+    const katakana = (await import('./data/ja/katakana.json')).default;
+    const kanji = (await import('./data/ja/kanji.json')).default;
+    TOTAL_TARGET_CHARS = hiragana.length + katakana.length + kanji.length;
+    console.log(`[Moji Init] Total target characters loaded: ${TOTAL_TARGET_CHARS}`);
+  }
+  loadTotalTargetChars();
 
   // 초기 뷰(도감) 로드
   navigateTo('collection');

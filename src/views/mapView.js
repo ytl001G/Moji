@@ -2,6 +2,7 @@ import { getAllCollectedItems } from '../db/index.js';
 import { showNotice } from '../components/notice.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster'; // MarkerClusterGroup 플러그인 임포트
 
 const DEFAULT_MAP_CENTER = [35.6812, 139.7671]; // 도쿄역 근처
 
@@ -34,7 +35,7 @@ export async function renderMapView(container) {
   const empty = container.querySelector('#map-empty');
   const list = container.querySelector('#map-record-list');
   const map = L.map(mapElement, { zoomControl: true, attributionControl: true }).setView(DEFAULT_MAP_CENTER, 11);
-  const markers = []; // 맵에 추가된 마커들을 저장할 배열
+  const markers = L.markerClusterGroup(); // 마커 클러스터 그룹 생성
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -55,9 +56,9 @@ export async function renderMapView(container) {
           iconAnchor: [19, 38],
         }),
       }).addTo(map);
-      marker.bindPopup(`<strong>${escapeHtml(item.charId || '글자')}</strong><br>${escapeHtml(item.address || formatDate(item.createdAt))}`);
+      marker.bindPopup(`<strong>${escapeHtml(item.charId || '글자')}</strong><br>${escapeHtml(item.address || formatDate(item.createdAt))}`); // 팝업 내용 개선
       marker.on('click', () => showRecord(item));
-      markers.push(marker);
+      markers.addLayer(marker); // 마커를 클러스터 그룹에 추가
     });
 
     const bounds = L.latLngBounds(locatedItems.map((item) => [item.lat, item.lng]));
@@ -65,6 +66,7 @@ export async function renderMapView(container) {
     else map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
   }
 
+  map.addLayer(markers); // 클러스터 그룹을 지도에 추가
   const recentItems = [...items].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 6);
   if (!recentItems.length) {
     list.innerHTML = '<p class="record-empty">첫 번째 글자를 수집하면 여기에 여행 기록이 쌓입니다.</p>';
@@ -89,7 +91,7 @@ export async function renderMapView(container) {
 
 function showRecord(item) {
   const date = formatDate(item.createdAt, true);
-  showNotice(item.charId || '글자', `${item.address || '주소 기록 없음'} · ${date}`);
+  showNotice(item.charId || '글자', `${item.address || '주소 정보 없음'} · ${date}`); // 주소 정보가 없을 때 메시지 개선
 }
 
 function formatDate(value, withTime = false) {

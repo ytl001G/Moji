@@ -58,9 +58,28 @@ export async function renderCollectionPlanView(container) {
       const column = getKanaColumn(item, characters);
       if (column) card.style.gridColumnStart = column;
       card.setAttribute('aria-label', `${item.id} ${records.length ? '수집됨' : '미수집'}`);
-      if (records.length) {
-        const imageUrl = await getImageUrlFromOpfs(records.at(-1).cropFileName);
-        card.innerHTML = `<img src="${imageUrl}" alt="${item.id}"><span class="card-character">${item.id}</span>${records.length > 1 ? `<em>+${records.length}</em>` : ''}`;
+      if (records.length > 0) {
+        const clotheslineContainer = document.createElement('div');
+        clotheslineContainer.className = 'clothesline-images';
+
+        // 최대 3개의 이미지만 표시 (빨랫줄 효과)
+        const imagesToDisplay = records.slice(0, 3);
+
+        for (let i = 0; i < imagesToDisplay.length; i++) {
+          const recordItem = imagesToDisplay[i];
+          const imgUrl = await getImageUrlFromOpfs(recordItem.cropFileName);
+          const img = document.createElement('img');
+          img.src = imgUrl;
+          img.alt = `${item.id} 수집 사진 ${i + 1}`;
+          img.className = 'clothesline-photo';
+          img.style.transform = `rotate(${Math.random() * 10 - 5}deg)`; // -5도 ~ +5도 랜덤 회전
+          img.style.zIndex = 10 - i; // 겹치기 순서
+          clotheslineContainer.appendChild(img);
+        }
+
+        card.appendChild(clotheslineContainer);
+        card.innerHTML += `<span class="card-character">${item.id}</span>`;
+        if (records.length > 1) card.innerHTML += `<em>${records.length}</em>`; // 총 수집 횟수 표시
       } else {
         card.innerHTML = `<span class="card-character">${item.id}</span>`;
       }

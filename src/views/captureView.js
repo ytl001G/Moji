@@ -2,6 +2,7 @@ import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
 import { extractExifData } from '../utils/exif.js';
 import { showNotice } from '../components/notice.js';
+import { initScanner, getScannedImageBlob, destroyScanner } from '../services/scanner.js'; // jscanify 스캐너 임포트
 import { addCollectionItem } from '../db/index.js';
 import { saveImageToOpfs } from '../db/opfs.js';
 
@@ -37,6 +38,8 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
         <button id="btn-save-crop" type="button" hidden>글자 입력하기</button>
         <button id="btn-cancel" type="button" hidden>다시 촬영</button>
       </div>
+      <button id="btn-scan-document" type="button" hidden>문서 스캔</button> <!-- 스캔 버튼 추가 -->
+
       <form id="save-sheet" class="save-sheet" hidden>
         <div class="save-sheet-paper">
           <p>COLLECTION NOTE</p>
@@ -59,6 +62,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
   const charInput = container.querySelector('#save-char');
   const btnSave = container.querySelector('#btn-save-crop');
   const btnCancel = container.querySelector('#btn-cancel');
+  const btnScanDocument = container.querySelector('#btn-scan-document'); // 스캔 버튼 참조
   let fullImageBlob = null;
   let sourceObjectUrl = null;
   let croppedImageBlob = null;
@@ -158,6 +162,8 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
         guides: true,
         center: true,
         highlight: false,
+        minCropBoxWidth: 20, // 최소 크롭 박스 너비
+        minCropBoxHeight: 20, // 최소 크롭 박스 높이
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
@@ -173,6 +179,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       window.setTimeout(() => cropper && attachCornerHandles(cropper), 120);
       cropHint.hidden = false;
       btnCancel.hidden = false;
+      btnScanDocument.hidden = false; // 스캔 버튼 표시
       btnSave.hidden = false; // 사진 촬영 후 "글자 선택하기" 버튼 표시
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error'); // 오류 발생 시
@@ -180,6 +187,37 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     } finally {
     }
   };
+
+  btnScanDocument.addEventListener('click', async () => {
+    if (!fullImageBlob) {
+      showNotice('스캔 실패', '원본 이미지가 없습니다.', 'error');
+      return;
+    }
+    btnScanDocument.disabled = true;
+    showNotice('문서 스캔 중...', '이미지의 왜곡을 보정하고 있습니다.', 'info', 3000);
+
+    try {
+      // jscanify를 위한 임시 캔버스 생성
+      const tempCanvas = document.createElement('canvas');
+      const tempImg = new Image();
+      tempImg.src = sourceObjectUrl; // 현재 크롭 대상 이미지 사용
+      await new Promise(r => tempImg.onload = r);
+
+      initScanner(tempCanvas, tempImg); // jscanify 초기화
+      const scannedBlob = await getScannedImageBlob(); // 스캔된 이미지 Blob 가져오기
+      destroyScanner(); // 스캐너 인스턴스 정리
+
+      // 스캔된 이미지를 크롭 대상으로 다시 설정
+      URL.revokeObjectURL(sourceObjectUrl);
+      sourceObjectUrl = URL.createObjectURL(scannedBlob);
+      sourceImg.src = sourceObjectUrl; // Cropper가 새 이미지를 로드하도록 트리거
+      showNotice('스캔 완료', '이미지 왜곡이 보정되었습니다.', 'success');
+    } catch (error) {
+      showNotice('문서 스캔 실패', error.message || '다시 시도해 주세요.', 'error');
+    } finally {
+      btnScanDocument.disabled = false;
+    }
+  });
 
   btnSave.addEventListener('click', async () => { // "글자 입력하기" 버튼 클릭 시
     if (!fullImageBlob) {
@@ -215,6 +253,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
 
     const submitButton = saveSheet.querySelector('[type="submit"]');
     submitButton.disabled = true;
+    showNotice('저장 중...', '사진과 위치 정보를 저장하고 있습니다.', 'info'); // 저장 시작 시 로딩 메시지 표시
 
     try {
       const timestamp = Date.now();
@@ -227,12 +266,14 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng });
 
       saveSheet.hidden = true;
+      showNotice('도감에 저장했어요', `'${charId}' 기록을 추가했습니다.`, 'success'); // 성공 메시지
       showNotice('도감에 저장했어요', `'${charId}' 기록을 추가했습니다.`, 'success');
       resetToCaptureState(); // 성공 후 카메라 뷰로 리셋
     } catch (error) {
       showNotice('저장하지 못했어요', error.message || '잠시 후 다시 시도해 주세요.', 'error');
     } finally {
       submitButton.disabled = false;
+      // showNotice는 이미 catch/try 블록에서 호출되므로, 여기서 추가적인 닫기 로직은 필요 없습니다.
     }
   });
 
@@ -251,6 +292,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     cropHint.hidden = true; // 크롭 힌트 숨김
     video.hidden = false;
     // btnSnap 관련 로직 제거, 전역 셔터 버튼이 관리
+    btnScanDocument.hidden = true; // 스캔 버튼 숨김
     btnSave.hidden = true;
     btnCancel.hidden = true;
     fullImageBlob = null;
@@ -265,6 +307,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
   return () => {
     currentStream?.getTracks().forEach((track) => track.stop()); currentStream = null;
     cropper?.destroy(); cropper = null; if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl);
+    destroyScanner(); // 스캐너 인스턴스 정리
     restoreShutterButtonNavMode(); // 전역 셔터 버튼을 원래 네비게이션 상태로 복원
     isCaptureViewActive = false; // 뷰가 정리될 때 비활성화 플래그 설정
   };

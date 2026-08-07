@@ -25,7 +25,7 @@ export async function renderPosterView(container) {
   const canvas = container.querySelector('#poster-canvas');
   const ctx = canvas.getContext('2d');
 
-  const collectedItems = await getAllCollectedItems();
+  let collectedItems = []; // collectedItems를 함수 내에서 로드하도록 변경
 
   // 포스터 그리기 함수
   async function drawPoster(text) {
@@ -46,6 +46,8 @@ export async function renderPosterView(container) {
     const cols = Math.min(chars.length, 3);
     // const rows = Math.ceil(chars.length / cols); // rows는 직접 사용되지 않음
     const boxSize = 140; // 각 이미지/글자 박스의 크기
+
+    collectedItems = await getAllCollectedItems(); // 매번 최신 데이터 로드
     const gap = 20; // 박스 간 간격
 
     const startX = (canvas.width - (cols * boxSize + (cols - 1) * gap)) / 2;

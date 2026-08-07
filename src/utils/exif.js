@@ -20,6 +20,29 @@ function getCurrentLocation() {
 }
 
 /**
+ * 위경도 정보를 기반으로 주소 문자열을 가져오는 역지오코딩 함수
+ * OpenStreetMap Nominatim API를 사용합니다.
+ * @param {number} lat - 위도
+ * @param {number} lng - 경도
+ * @returns {Promise<string>} 주소 문자열 (예: '일본 도쿄도 치요다구 마루노우치')
+ */
+async function getAddressFromLatLng(lat, lng) {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ko`);
+    if (!response.ok) {
+      throw new Error(`Nominatim API 오류: ${response.statusText}`);
+    }
+    const data = await response.json();
+    // 필요한 주소 정보만 추출하여 반환 (예시)
+    return data.display_name || `${lat}, ${lng}`;
+  } catch (error) {
+    console.warn('역지오코딩 실패:', error);
+    return `${lat}, ${lng}`; // 실패 시 위경도 반환
+  }
+}
+
+
+/**
  * 이미지 Blob/File에서 Exif GPS 및 촬영 일시 추출 (HTML5 File FileReader 사용)
  * EXIF 데이터가 없으면 Geolocation API를 fallback으로 사용합니다.
  * @param {File|Blob} file - 사진 파일
@@ -64,9 +87,13 @@ export async function extractExifData(file) {
     console.warn('Geolocation 정보 가져오기 실패:', geoError.message);
   }
 
+  // 주소 정보 가져오기
+  const address = (location?.lat && location?.lng) ? await getAddressFromLatLng(location.lat, location.lng) : '';
+
   return {
     lat: location?.lat || null,
     lng: location?.lng || null,
-    createdAt: new Date().toISOString() // EXIF에 날짜가 없었으므로 현재 시간 사용
+    createdAt: new Date().toISOString(), // EXIF에 날짜가 없었으므로 현재 시간 사용
+    address: address // 새로 추가된 주소 필드
   };
 }
