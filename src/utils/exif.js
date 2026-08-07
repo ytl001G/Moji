@@ -5,15 +5,15 @@ import ExifReader from 'exifreader';
  * @returns {Promise<{lat: number, lng: number}|null>}
  */
 function getCurrentLocation() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => { // reject 추가
     if (!navigator.geolocation) {
-      resolve(null);
+      reject(new Error('Geolocation API를 지원하지 않습니다.')); // reject로 변경
       return;
     }
     // 5초 타임아웃, 높은 정확도 옵션 사용
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
+      (error) => reject(error), // 에러 발생 시 reject
       { timeout: 5000, enableHighAccuracy: true }
     );
   });
@@ -31,7 +31,7 @@ export async function extractExifData(file) {
     const tags = await ExifReader.load(file);
 
     // GPS 위도/경도 정보 추출
-    const hasGps = tags.GPSLatitude && tags.GPSLongitude;
+    const hasGps = tags.GPSLatitude && tags.GPSLongitude; // tags.GPSLatitude와 tags.GPSLongitude가 모두 존재해야 함
     const lat = hasGps ? tags.GPSLatitude.description : null;
     const lng = hasGps ? tags.GPSLongitude.description : null;
 
@@ -57,7 +57,13 @@ export async function extractExifData(file) {
   }
 
   // EXIF에서 GPS를 찾지 못했거나 파싱에 실패한 경우, Geolocation API 사용
-  const location = await getCurrentLocation();
+  let location = { lat: null, lng: null };
+  try {
+    location = await getCurrentLocation();
+  } catch (geoError) {
+    console.warn('Geolocation 정보 가져오기 실패:', geoError.message);
+  }
+
   return {
     lat: location?.lat || null,
     lng: location?.lng || null,

@@ -1,1 +1,54 @@
-/* Navigation styling is kept in main.css. */
+.thumb-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--thumb-zone-height);
+  width: 100%;
+  background-color: var(--surface-color);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+
+  display: flex; /* Flexbox 컨테이너로 설정 */
+  justify-content: space-around; /* 자식 요소들을 고르게 분배 */
+  align-items: center; /* 자식 요소들을 수직 중앙 정렬 */
+  padding: 0 24px; /* 좌우 패딩을 16px에서 24px로 증가 */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px); /* Safe area inset 고려 */
+}
+
+/* 기본 shutter-btn의 margin-top과 transform을 재정의하여 바에 통합 */
+.shutter-btn {
+  /* main.css에서 이미 기본 스타일이 정의되어 있으므로,
+     여기서는 오버라이드할 필요가 없습니다.
+     만약 특정 이유로 오버라이드가 필요하다면 주석 해제 */
+  /* margin-top: 0; */
+  /* transform: none; */
+}
+.shutter-btn:active {
+  transform: scale(0.92); /* 클릭 시 피드백은 유지 */
+}
+
+.nav-cluster-left, .nav-cluster-right { /* These are direct flex items of .thumb-zone */
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 버튼들 사이의 간격 */
+}
+
+/* 카메라 뷰에서 셔터 버튼으로 변환될 때의 스타일 */
+.shutter-btn.shutter-active {
+  width: 70px; /* 약간 더 크게 */
+  height: 70px;
+  border-radius: 50%; /* 완벽한 원형 */
+  background: linear-gradient(135deg, #e04e4e, #c0392b); /* 더 붉은색으로 변경 */
+  box-shadow: 0 4px 0 #a02c20, 0 8px 16px rgba(192, 57, 43, 0.35);
+  transform: none; /* 회전 제거 */
+  margin-top: 0; /* 크기 변화에 따른 위치 조정 제거 */
+}
+.shutter-btn.shutter-active .shutter-inner {
+  font-size: 2rem; /* 아이콘 크기 확대 */
+  color: white;
+}
+.shutter-btn.shutter-active:active {
+  transform: scale(0.95); /* 클릭 시 피드백 */
+}

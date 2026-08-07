@@ -8,8 +8,8 @@ export const db = new Dexie('MojiDatabase');
 // charId: 수집 대상 글자 ('あ', '酒' 등)
 // id: 자동 증가 고유 PK
 // createdAt: 촬영/수집 시간
-db.version(1).stores({
-  collections: '++id, charId, createdAt, lat, lng, isNight'
+db.version(1).stores({ // 스키마에 address 필드 추가
+  collections: '++id, charId, createdAt, lat, lng, address, isNight'
 });
 
 /**

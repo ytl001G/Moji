@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#f4efe4" />
 
   <!-- Tesseract.js를 CDN에서 직접 로드하여 빌드 시 번들 크기를 줄입니다. -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script> --> <!-- OCR 기능 제거로 인해 주석 처리 -->
   <!-- jscanify를 CDN에서 직접 로드하여 빌드 시 번들 크기를 줄입니다. -->
   <script src="https://unpkg.com/jscanify@1.4.3/dist/jscanify.js"></script>
 
@@ -28,27 +28,29 @@
     <main id="main-content" class="display-zone"></main>
 
     <nav class="thumb-zone">
-      <div class="nav-cluster">
+      <div class="nav-cluster nav-cluster-left">
         <button id="nav-collection" class="nav-btn active" type="button">
           <span class="icon">📖</span>
           <span class="label">도감</span>
         </button>
+      </div>
 
-        <button id="btn-camera-shutter" class="shutter-btn" type="button">
-          <div class="shutter-inner">📷</div>
-        </button>
+      <button id="btn-camera-shutter" class="shutter-btn" type="button">
+        <div class="shutter-inner">📷</div>
+      </button>
 
+      <div class="nav-cluster nav-cluster-right">
         <button id="nav-map" class="nav-btn" type="button">
           <span class="icon">🗺️</span>
           <span class="label">지도</span>
         </button>
-
         <button id="nav-poster" class="nav-btn" type="button">
           <span class="icon">🖼️</span>
           <span class="label">포스터</span>
         </button>
       </div>
     </nav>
+
   </div>
 
   <script type="module" src="./src/main.js"></script>

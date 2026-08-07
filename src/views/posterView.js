@@ -29,6 +29,7 @@ export async function renderPosterView(container) {
 
   // 포스터 그리기 함수
   async function drawPoster(text) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // 캔버스 초기화
     // 배경 그리기 (어두운 레트로 포스터 테마)
     ctx.fillStyle = '#fff7e8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -43,12 +44,16 @@ export async function renderPosterView(container) {
     if (chars.length === 0) return;
 
     const cols = Math.min(chars.length, 3);
-    const rows = Math.ceil(chars.length / cols);
-    const boxSize = 140;
-    const gap = 20;
+    // const rows = Math.ceil(chars.length / cols); // rows는 직접 사용되지 않음
+    const boxSize = 140; // 각 이미지/글자 박스의 크기
+    const gap = 20; // 박스 간 간격
 
     const startX = (canvas.width - (cols * boxSize + (cols - 1) * gap)) / 2;
     const startY = 120;
+
+    // 이미지 로딩을 병렬로 처리하기 위한 배열
+    const imagePromises = [];
+    const charPositions = [];
 
     for (let i = 0; i < chars.length; i++) {
       const char = chars[i];
@@ -56,15 +61,34 @@ export async function renderPosterView(container) {
       const row = Math.floor(i / cols);
       const x = startX + col * (boxSize + gap);
       const y = startY + row * (boxSize + gap);
+      charPositions.push({ char, x, y });
 
       // 해당 글자가 DB에 수집되어 있는지 확인
       const matched = collectedItems.find(item => item.charId === char);
 
       if (matched) {
-        const imgUrl = await getImageUrlFromOpfs(matched.cropFileName);
-        const img = new Image();
-        img.src = imgUrl;
-        await new Promise(r => img.onload = r);
+        imagePromises.push((async () => {
+          const imgUrl = await getImageUrlFromOpfs(matched.cropFileName);
+          const img = new Image();
+          img.src = imgUrl;
+          await new Promise(r => img.onload = r);
+          URL.revokeObjectURL(imgUrl); // Object URL 해제
+          return { img, x, y };
+        })());
+      } else {
+        imagePromises.push(Promise.resolve(null)); // 미수집 글자는 null로 처리
+      }
+    }
+
+    const loadedImages = await Promise.all(imagePromises);
+
+    ctx.textBaseline = 'middle'; // 텍스트 정렬 기준 설정 (한 번만)
+
+    loadedImages.forEach((data, i) => {
+      const { char, x, y } = charPositions[i];
+
+      if (data) { // 수집된 글자 이미지
+        const { img } = data;
 
         ctx.drawImage(img, x, y, boxSize, boxSize);
         ctx.strokeStyle = '#b96d58';
@@ -75,12 +99,11 @@ export async function renderPosterView(container) {
         ctx.fillStyle = '#eee0ca';
         ctx.fillRect(x, y, boxSize, boxSize);
         ctx.fillStyle = '#725b48';
-        ctx.font = 'bold 40px Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 40px Georgia, serif'; // 폰트 설정
+        ctx.textAlign = 'center'; // 텍스트 정렬
         ctx.fillText(char, x + boxSize / 2, y + boxSize / 2);
       }
-    }
+    });
   }
 
   btnGenerate.addEventListener('click', () => drawPoster(input.value.trim()));

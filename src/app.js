@@ -2,6 +2,9 @@ import { db } from './db/index.js';
 import { renderCaptureView } from './views/captureView.js';
 
 let currentViewCleanup = null; // 현재 활성화된 뷰의 정리 함수를 저장
+let handleSnapClickRef = null; // captureView에서 설정할 셔터 클릭 핸들러 참조
+let btnShutterGlobal = null; // 전역 카메라/셔터 버튼 참조
+let originalShutterButtonProps = {}; // btnShutterGlobal의 원래 속성을 저장
 
 export async function updateStatsBadge() {
   const statsBadge = document.getElementById('stats-badge');
@@ -28,13 +31,42 @@ export async function navigateTo(viewName) {
     return;
   }
 
+  // btnShutterGlobal이 아직 초기화되지 않았다면 초기화
+  if (!btnShutterGlobal) {
+    btnShutterGlobal = document.getElementById('btn-camera-shutter');
+    // originalShutterButtonProps는 initApp에서 설정되므로 여기서는 초기화만 확인합니다.
+    // btnShutterGlobal은 initApp에서 초기 네비게이션 이벤트 리스너를 가집니다.
+    // handleSnapClickRef는 captureView에서 설정됩니다.
+  }
+
   // 이전 뷰의 정리 함수가 있다면 호출하고 초기화
   if (currentViewCleanup) {
     currentViewCleanup();
     currentViewCleanup = null;
   }
 
+  // --- Start: Centralized button state management ---
+
   displayZone.innerHTML = '';
+  
+  // 모든 뷰 전환 시, 카메라 버튼의 모든 리스너를 제거하고 현재 뷰에 맞는 리스너를 다시 설정
+  if (btnShutterGlobal) {
+    // 기존에 추가된 모든 리스너 제거 (중복 방지 및 상태 초기화)
+    if (originalShutterButtonProps.navHandler) {
+      btnShutterGlobal.removeEventListener('click', originalShutterButtonProps.navHandler);
+    }
+    if (handleSnapClickRef) { // captureView에서 설정된 셔터 핸들러가 있다면 제거
+      btnShutterGlobal.removeEventListener('click', handleSnapClickRef);
+      handleSnapClickRef = null; // 참조도 초기화
+    }
+
+    // 항상 기본 네비게이션 상태로 복원
+    btnShutterGlobal.innerHTML = originalShutterButtonProps.innerHTML; // UI 복원
+    btnShutterGlobal.className = originalShutterButtonProps.className; // UI 복원
+    btnShutterGlobal.disabled = originalShutterButtonProps.disabled; // UI 복원
+    btnShutterGlobal.addEventListener('click', originalShutterButtonProps.navHandler); // 네비게이션 핸들러 다시 연결
+  }
+
   updateActiveNavButton(viewName);
 
   try {
@@ -45,7 +77,7 @@ export async function navigateTo(viewName) {
         break;
 
       case 'capture':
-        currentViewCleanup = renderCaptureView(displayZone); // 정리 함수를 저장
+        currentViewCleanup = renderCaptureView(displayZone, btnShutterGlobal, originalShutterButtonProps, (handler) => { handleSnapClickRef = handler; });
         break;
 
       case 'map':
@@ -67,6 +99,7 @@ export async function navigateTo(viewName) {
 }
 
 function updateActiveNavButton(activeView) {
+  // 카메라 버튼은 이 로직에서 제외됩니다. 자체적으로 상태를 관리합니다.
   const navButtons = {
     collection: document.getElementById('nav-collection'),
     map: document.getElementById('nav-map'),
@@ -88,26 +121,27 @@ export function initApp() {
   console.log('[Moji Init] 앱 이벤트 바인딩 시작...');
 
   const btnCollection = document.getElementById('nav-collection');
-  const btnShutter = document.getElementById('btn-camera-shutter');
+  btnShutterGlobal = document.getElementById('btn-camera-shutter'); // 전역 버튼 참조 초기화
   const btnMap = document.getElementById('nav-map');
   const btnPoster = document.getElementById('nav-poster');
 
   if (btnCollection) {
     btnCollection.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('📖 도감 버튼 클릭됨');
       navigateTo('collection');
     });
   }
 
-  if (btnShutter) {
-    btnShutter.addEventListener('click', (e) => {
+  // 전역 셔터 버튼의 초기 네비게이션 클릭 핸들러 설정
+  if (btnShutterGlobal) {
+    originalShutterButtonProps = { innerHTML: btnShutterGlobal.innerHTML, className: btnShutterGlobal.className, disabled: btnShutterGlobal.disabled };
+    originalShutterButtonProps.navHandler = (e) => { // 초기 네비게이션 핸들러 정의
       e.preventDefault();
-      console.log('📷 셔터 버튼 클릭됨');
       navigateTo('capture');
-    });
+    };
+    // 초기에는 네비게이션 핸들러를 직접 추가하지 않고, navigateTo에서 관리하도록 합니다.
+    // navigateTo('collection') 호출 시 자동으로 navHandler가 추가됩니다.
   }
-
   if (btnMap) {
     btnMap.addEventListener('click', (e) => {
       e.preventDefault();

@@ -3,7 +3,7 @@ import { showNotice } from '../components/notice.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const DEFAULT_MAP_CENTER = [35.6812, 139.7671];
+const DEFAULT_MAP_CENTER = [35.6812, 139.7671]; // 도쿄역 근처
 
 export async function renderMapView(container) {
   const items = await getAllCollectedItems();
@@ -34,6 +34,7 @@ export async function renderMapView(container) {
   const empty = container.querySelector('#map-empty');
   const list = container.querySelector('#map-record-list');
   const map = L.map(mapElement, { zoomControl: true, attributionControl: true }).setView(DEFAULT_MAP_CENTER, 11);
+  const markers = []; // 맵에 추가된 마커들을 저장할 배열
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -56,6 +57,7 @@ export async function renderMapView(container) {
       }).addTo(map);
       marker.bindPopup(`<strong>${escapeHtml(item.charId || '글자')}</strong><br>${escapeHtml(item.address || formatDate(item.createdAt))}`);
       marker.on('click', () => showRecord(item));
+      markers.push(marker);
     });
 
     const bounds = L.latLngBounds(locatedItems.map((item) => [item.lat, item.lng]));
@@ -78,6 +80,11 @@ export async function renderMapView(container) {
     record.addEventListener('click', () => showRecord(item));
     list.appendChild(record);
   });
+
+  // 뷰 정리 함수 반환
+  return () => {
+    map.remove(); // Leaflet 맵 인스턴스 제거
+  };
 }
 
 function showRecord(item) {
