@@ -1,6 +1,7 @@
 import './assets/styles/main.css';
 import './assets/styles/thumb-zone.css';
 import './assets/styles/card-3d.css';
+import 'cropperjs/dist/cropper.css'; // Cropper.js 스타일 추가
 import { registerSW } from 'virtual:pwa-register';
 
 import { initApp } from './app.js';

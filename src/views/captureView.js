@@ -1,5 +1,4 @@
-import Cropper from 'cropperjs';
-import 'cropperjs/dist/cropper.css';
+import Cropper_ from 'cropperjs';
 import { extractExifData } from '../utils/exif.js';
 import { showNotice } from '../components/notice.js';
 import { initScanner, getScannedImageBlob, destroyScanner } from '../services/scanner.js'; // jscanify 스캐너 임포트
@@ -7,6 +6,8 @@ import { addCollectionItem } from '../db/index.js';
 import { saveImageToOpfs } from '../db/opfs.js';
 
 let currentStream = null;
+const Cropper = Cropper_.default || Cropper_; // Cropper.js가 default export를 사용하지 않을 경우를 대비
+
 let cropper = null;
 let isCaptureViewActive = false; // 캡처 뷰가 현재 활성화되어 있는지 추적하는 플래그
 
@@ -34,7 +35,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
         <img id="crop-target-img" alt="촬영한 이미지" hidden>
         <p id="crop-hint" class="crop-hint" hidden>네 모서리를 조절하여 글자 영역을 맞춰 주세요.</p>
       </div>
-      <div id="capture-controls-wrapper" class="capture-controls" hidden> <!-- hidden 속성 추가 -->
+      <div id="capture-controls-wrapper" class="capture-controls" hidden>
         <button id="btn-save-crop" type="button" hidden>글자 입력하기</button>
         <button id="btn-cancel" type="button" hidden>다시 촬영</button>
       </div>
@@ -180,6 +181,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       window.setTimeout(() => cropper && attachCornerHandles(cropper), 120);
       cropHint.hidden = false;
       btnCancel.hidden = false;
+      // captureControlsWrapper.hidden = false; // 컨트롤 래퍼 표시 (아래에서 다시 숨김)
       captureControlsWrapper.hidden = false; // 컨트롤 래퍼 표시
       btnScanDocument.hidden = false; // 스캔 버튼 표시
       btnSave.hidden = false; // 사진 촬영 후 "글자 선택하기" 버튼 표시
@@ -187,7 +189,6 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error'); // 오류 발생 시
       globalShutterButton.disabled = false; // 오류 발생 시 버튼 다시 활성화
     } finally {
-    }
   };
 
   btnScanDocument.addEventListener('click', async () => {
@@ -394,4 +395,4 @@ async function capturePhoto(video) {
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.98));
-}
+}}

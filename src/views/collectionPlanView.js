@@ -12,7 +12,6 @@ export async function renderCollectionPlanView(container) {
         <button class="tab-btn" data-type="katakana" type="button">가타카나</button>
         <button class="tab-btn" data-type="kanji" type="button">한자</button>
       </div>
-      <div id="kana-column-guide" class="kana-column-guide" aria-hidden="true"><span>a</span><span>i</span><span>u</span><span>e</span><span>o</span></div>
       <p id="search-summary" class="search-summary"></p>
       <div id="grid-container" class="character-grid"></div>
     </section>
@@ -21,7 +20,6 @@ export async function renderCollectionPlanView(container) {
   const grid = container.querySelector('#grid-container');
   const input = container.querySelector('#character-search');
   const summary = container.querySelector('#search-summary');
-  const columnGuide = container.querySelector('#kana-column-guide');
   let activeType = 'hiragana';
   let characters = [];
   let collectedMap = new Map();
@@ -29,8 +27,7 @@ export async function renderCollectionPlanView(container) {
   async function load(type) {
     grid.innerHTML = '<p class="grid-message">도감을 펼치는 중…</p>';
     const [dataModule, collected] = await Promise.all([loadCharacterData(type), db.collections.toArray()]);
-    characters = sortByKanaRow(dataModule.default);
-    columnGuide.hidden = type === 'kanji';
+    characters = dataModule.default;
     collectedMap = new Map();
     collected.forEach((item) => {
       const records = collectedMap.get(item.charId) || [];
@@ -49,51 +46,36 @@ export async function renderCollectionPlanView(container) {
       grid.innerHTML = '<p class="grid-message">찾는 문자가 없어요.</p>';
       return;
     }
-    for (const [index, item] of filtered.entries()) {
+
+    for (const item of filtered) {
       const records = collectedMap.get(item.id) || [];
-      const card = document.createElement('button');
-      card.type = 'button';
-      const startsRow = index === 0 || item.row !== filtered[index - 1].row;
-      card.className = `collection-card ${records.length ? 'is-collected' : ''} ${startsRow ? 'row-start' : ''}`;
-      const column = getKanaColumn(item, characters);
-      if (column) card.style.gridColumnStart = column;
-      card.setAttribute('aria-label', `${item.id} ${records.length ? '수집됨' : '미수집'}`);
-      if (records.length > 0) { // 수집된 기록이 있을 경우 빨랫줄 디자인 적용
-        const clotheslineContainer = document.createElement('div');
-        clotheslineContainer.className = 'clothesline-images';
+      const characterRow = document.createElement('section');
+      characterRow.className = `character-clothesline ${records.length ? 'is-collected' : ''}`;
 
-        // 최대 3개의 이미지만 표시 (빨랫줄 효과)
-        const imagesToDisplay = records.slice(0, 3);
+      const charItem = document.createElement('button');
+      charItem.type = 'button';
+      charItem.className = 'clothesline-char-item';
+      charItem.setAttribute('aria-label', `${item.id} ${records.length ? '수집됨' : '미수집'}`);
+      charItem.textContent = item.id;
+      charItem.addEventListener('click', () => showNotice(item.id, records.length ? `${records.length}번 수집한 글자예요.` : '아직 수집하지 않은 글자예요.'));
+      characterRow.appendChild(charItem);
 
-        for (let i = 0; i < imagesToDisplay.length; i++) {
-          const recordItem = imagesToDisplay[i];
-          const imgUrl = await getImageUrlFromOpfs(recordItem.cropFileName);
-          const img = document.createElement('img');
-          img.src = imgUrl;
-          img.alt = `${item.id} 수집 사진 ${i + 1}`;
-          img.className = 'clothesline-photo';
-          img.style.transform = `rotate(${Math.random() * 10 - 5}deg) scale(0.8)`; // -5도 ~ +5도 랜덤 회전 및 크기 조정
-          img.style.zIndex = 10 - i; // 겹치기 순서
-          clotheslineContainer.appendChild(img);
-        }
-
-        card.appendChild(clotheslineContainer);
-
-        const charSpan = document.createElement('span');
-        charSpan.className = 'card-character';
-        charSpan.textContent = item.id;
-        card.appendChild(charSpan);
-
-        if (records.length > 1) {
-          const countEm = document.createElement('em');
-          countEm.textContent = records.length; // 총 수집 횟수 표시
-          card.appendChild(countEm);
-        }
+      const clotheslineTrack = document.createElement('div');
+      clotheslineTrack.className = 'clothesline-track';
+      if (!records.length) {
+        clotheslineTrack.innerHTML = '<span class="empty-clothesline">아직 수집한 사진이 없어요.</span>';
       } else {
-        card.innerHTML = `<span class="card-character">${item.id}</span>`;
+        const imageUrls = await Promise.all(records.map((record) => getImageUrlFromOpfs(record.cropFileName)));
+        imageUrls.filter(Boolean).forEach((imgUrl, index) => {
+          const image = document.createElement('img');
+          image.src = imgUrl;
+          image.alt = `${item.id} 수집 사진 ${index + 1}`;
+          image.className = 'collected-image-thumbnail';
+          clotheslineTrack.appendChild(image);
+        });
       }
-      card.addEventListener('click', () => showNotice(item.id, records.length ? `${records.length}번 수집한 글자예요.` : '아직 수집하지 않은 글자예요.'));
-      grid.appendChild(card);
+      characterRow.appendChild(clotheslineTrack);
+      grid.appendChild(characterRow);
     }
   }
 
@@ -106,7 +88,6 @@ export async function renderCollectionPlanView(container) {
 
   try { await load(activeType); } catch (error) { grid.innerHTML = '<p class="grid-message is-error">도감을 불러오지 못했습니다.</p>'; }
 }
-
 function loadCharacterData(type) {
   const loaders = {
     hiragana: () => import('../data/ja/hiragana.json'),
@@ -116,22 +97,3 @@ function loadCharacterData(type) {
   return loaders[type]();
 }
 
-function getKanaColumn(item, allCharacters) {
-  if (!item.row) return null;
-  const indexInRow = allCharacters.filter((character) => character.row === item.row).findIndex((character) => character.id === item.id);
-  // In the y row, the absent yi/ye columns remain intentionally empty.
-  if (item.row === 'ya') return [1, 3, 5][indexInRow] || null;
-  return indexInRow + 1;
-}
-
-function sortByKanaRow(characters) {
-  // The source alternates plain and voiced characters (か, が, き, ぎ…).
-  // Keep each row together so ka appears before ga, sa before za, and so on.
-  const rowOrder = ['a', 'ka', 'ga', 'sa', 'za', 'ta', 'da', 'na', 'ha', 'ba', 'pa', 'ma', 'ya', 'ra', 'wa', 'n', 'va'];
-  return [...characters].sort((left, right) => {
-    const leftIndex = rowOrder.indexOf(left.row);
-    const rightIndex = rowOrder.indexOf(right.row);
-    if (leftIndex === -1 || rightIndex === -1) return 0;
-    return leftIndex - rightIndex;
-  });
-}
