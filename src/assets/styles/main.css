@@ -4,6 +4,8 @@
   --surface-border: #d8cdb9;
   --primary-color: #b96d58;
   --accent-color: #a87836;
+  --primary-action-color: #ff3b30; /* Red for action buttons */
+  --primary-action-color-dark: #cc2e24; /* Darker red for active state */
   --text-main: #443d35;
   --text-sub: #857969;
   --thumb-zone-height: 80px;
@@ -18,7 +20,7 @@ body { background-image: repeating-linear-gradient(84deg, rgba(125, 101, 70, .03
 .logo { font-family: "Gowun Batang", "Noto Serif KR", "Malgun Myeongjo", Georgia, serif; font-size: 1.35rem; font-weight: 700; letter-spacing: .5px; color: #645346; }
 .logo span { color: var(--primary-color); font-size: .9rem; margin-left: 4px; }
 .stats-badge { font-size: .75rem; background: #f6eee0; border: 1px solid var(--surface-border); padding: 5px 10px; border-radius: 12px; color: var(--accent-color); }
-.display-zone { flex: 1; width: 100%; height: calc(100% - var(--header-height) - var(--thumb-zone-height)); overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; }
+.display-zone { flex: 1; width: 100%; min-height: 0; /* Allow flex item to shrink and enable scrolling */ overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; }
 .thumb-zone { /* Styles are now fully managed in thumb-zone.css */ } /* thumb-zone 스타일은 thumb-zone.css에서 관리 */
 .nav-cluster { /* Styles are now fully managed in thumb-zone.css */ } /* nav-cluster 스타일은 thumb-zone.css에서 관리 */
 .nav-cluster::before { /* Styles are now fully managed in thumb-zone.css */ } /* nav-cluster::before 스타일은 thumb-zone.css에서 관리 */
@@ -162,9 +164,14 @@ body.camera-active .display-zone { height:calc(100% - var(--thumb-zone-height));
 @media (hover:none) { .collected-photo-button::after { opacity:1; } }
 
 .empty-clothesline { color: var(--text-sub); font-size: .82rem; padding: 0 5px; }
-
 /* Poster collage maker */
-.poster-view-container { height:100%; min-height:0; box-sizing:border-box; padding:10px 12px 12px; display:flex; flex-direction:column; gap:7px; }
+.poster-view-container {
+  box-sizing: border-box;
+  padding: 10px 12px calc(env(safe-area-inset-bottom) + 80px); /* 하단 고정 버튼을 위한 여백 확보 */
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
 .poster-controls { display:grid; grid-template-columns:minmax(0,1fr) 92px 82px auto; gap:7px; align-items:end; }
 .poster-text-field, .poster-select { display:grid; gap:3px; color:var(--text-sub); font-size:.68rem; font-weight:800; letter-spacing:.02em; }
 .poster-controls input, .poster-controls select { min-width:0; height:40px; box-sizing:border-box; padding:0 10px; border:1px solid var(--surface-border); border-radius:7px; background:#fffdf7; color:var(--text-main); font:inherit; }
@@ -173,8 +180,23 @@ body.camera-active .display-zone { height:calc(100% - var(--thumb-zone-height));
 .poster-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .poster-upload { display:inline-flex; align-items:center; min-height:32px; padding:0 10px; border:1px dashed #b8956c; border-radius:6px; background:#fff9ed; color:#76513d; font-size:.75rem; font-weight:800; cursor:pointer; }
 .poster-actions > span { color:var(--text-sub); font-size:.72rem; }
-.poster-canvas-wrap { flex:1; min-height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px !important; border:1px dashed #cdbb9f; border-radius:8px; background:#e9dfcf; }
-.poster-view-container canvas { display:block; max-width:100%; max-height:100%; object-fit:contain; transform-origin:center; background:#373532; border-radius:3px; box-shadow:0 5px 20px rgba(85,58,32,.25) !important; cursor:grab; touch-action:none; }
+.poster-canvas-wrap { /* flex:1; */ min-height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px !important; border:1px dashed #cdbb9f; border-radius:8px; background:#e9dfcf; }
+.poster-view-container canvas { display:block; max-width:100%; /* max-height:100%; */ object-fit:contain; transform-origin:center; background:#373532; border-radius:3px; box-shadow:0 5px 20px rgba(85,58,32,.25) !important; cursor:grab; touch-action:none; }
 .poster-view-container canvas.is-dragging { cursor:grabbing; }
-.poster-download { min-height:44px; border:0; border-radius:8px; font:800 .9rem inherit; cursor:pointer; }
+.poster-download {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 20px;
+  margin-top: 16px;
+  background-color: var(--primary-action-color); /* 정의된 액션 색상 사용 */
+  color: #fff; /* 흰색 텍스트 */
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.poster-download:active {
+  background-color: var(--primary-action-color-dark); /* 클릭 시 어두운 색상 */
+}
 @media (max-width:430px) { .poster-controls { grid-template-columns:minmax(0,1fr) 86px 78px; } .poster-controls button { grid-column:1 / -1; } }
