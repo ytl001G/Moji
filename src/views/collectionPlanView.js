@@ -1,4 +1,4 @@
-import { db } from '../db/index.js';
+import { db, deleteCollectionItem } from '../db/index.js';
 import { getImageUrlFromOpfs } from '../db/opfs.js';
 import { showNotice } from '../components/notice.js';
 
@@ -66,12 +66,27 @@ export async function renderCollectionPlanView(container) {
         clotheslineTrack.innerHTML = '<span class="empty-clothesline">아직 수집한 사진이 없어요.</span>';
       } else {
         const imageUrls = await Promise.all(records.map((record) => getImageUrlFromOpfs(record.cropFileName)));
-        imageUrls.filter(Boolean).forEach((imgUrl, index) => {
+        imageUrls.forEach((imgUrl, index) => {
+          if (!imgUrl) return;
+          const photoButton = document.createElement('button');
+          photoButton.type = 'button';
+          photoButton.className = 'collected-photo-button';
+          photoButton.title = '이 수집 사진 삭제';
+          photoButton.setAttribute('aria-label', `${item.id} 수집 사진 ${index + 1} 삭제`);
           const image = document.createElement('img');
           image.src = imgUrl;
           image.alt = `${item.id} 수집 사진 ${index + 1}`;
           image.className = 'collected-image-thumbnail';
-          clotheslineTrack.appendChild(image);
+          photoButton.appendChild(image);
+          photoButton.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            if (!window.confirm('이 수집 사진을 삭제할까요? 되돌릴 수 없습니다.')) return;
+            await deleteCollectionItem(records[index].id);
+            const remaining = records.filter((record) => record.id !== records[index].id);
+            collectedMap.set(item.id, remaining);
+            await render();
+          });
+          clotheslineTrack.appendChild(photoButton);
         });
       }
       characterRow.appendChild(clotheslineTrack);
