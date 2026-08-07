@@ -32,7 +32,28 @@ export async function renderPosterView(container) {
   let dragging = null;
   const activePointers = new Map();
   const pointerPieces = new Map();
+  const canvasPointers = new Map();
   let gesture = null;
+  let previewGesture = null;
+  let previewScale = 1;
+
+  function setPreviewScale(nextScale) {
+    previewScale = Math.max(.8, Math.min(2.4, nextScale));
+    canvas.style.transform = previewScale === 1 ? '' : `scale(${previewScale})`;
+  }
+
+  function beginTwoFingerGesture() {
+    if (canvasPointers.size !== 2) return;
+    const [first, second] = [...canvasPointers.values()];
+    const selectedIndex = pointerPieces.values().next().value;
+    if (selectedIndex !== undefined) {
+      const piece = posterPieces[selectedIndex];
+      gesture = { index: selectedIndex, distance: getDistance(first, second), angle: getAngle(first, second), width: piece.width, height: piece.height, pieceAngle: piece.angle };
+      dragging = null;
+    } else {
+      previewGesture = { distance: getDistance(first, second), scale: previewScale };
+    }
+  }
 
   async function buildPoster() {
     const text = [...input.value.trim()];
@@ -91,6 +112,8 @@ export async function renderPosterView(container) {
   });
   canvas.addEventListener('pointerdown', (event) => {
     const point = getCanvasPoint(event, canvas);
+    canvasPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    canvas.setPointerCapture(event.pointerId);
     for (let index = posterPieces.length - 1; index >= 0; index -= 1) {
       const piece = posterPieces[index];
       if (point.x >= piece.x && point.x <= piece.x + piece.width && point.y >= piece.y && point.y <= piece.y + piece.height) {
@@ -99,20 +122,18 @@ export async function renderPosterView(container) {
         dragging = { index, pointerId: event.pointerId, offsetX: point.x - piece.x, offsetY: point.y - piece.y };
         canvas.setPointerCapture(event.pointerId);
         canvas.classList.add('is-dragging');
-        if (activePointers.size === 2 && [...pointerPieces.values()].every((pieceIndex) => pieceIndex === index)) {
-          const [first, second] = [...activePointers.values()];
-          gesture = { index, distance: getDistance(first, second), angle: getAngle(first, second), width: piece.width, height: piece.height, pieceAngle: piece.angle };
-          dragging = null;
-        }
+        beginTwoFingerGesture();
         return;
       }
     }
+    beginTwoFingerGesture();
   });
   canvas.addEventListener('pointermove', (event) => {
     const point = getCanvasPoint(event, canvas);
+    if (canvasPointers.has(event.pointerId)) canvasPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (activePointers.has(event.pointerId)) activePointers.set(event.pointerId, point);
-    if (gesture && activePointers.size >= 2) {
-      const [first, second] = [...activePointers.values()];
+    if (gesture && canvasPointers.size >= 2) {
+      const [first, second] = [...canvasPointers.values()];
       const piece = posterPieces[gesture.index];
       const scale = Math.max(.35, Math.min(2.5, getDistance(first, second) / gesture.distance));
       piece.width = gesture.width * scale;
@@ -123,6 +144,11 @@ export async function renderPosterView(container) {
       redrawPoster();
       return;
     }
+    if (previewGesture && canvasPointers.size >= 2) {
+      const [first, second] = [...canvasPointers.values()];
+      setPreviewScale(previewGesture.scale * getDistance(first, second) / previewGesture.distance);
+      return;
+    }
     if (!dragging || dragging.pointerId !== event.pointerId) return;
     dragging.moved = true;
     const piece = posterPieces[dragging.index];
@@ -131,15 +157,19 @@ export async function renderPosterView(container) {
     redrawPoster();
   });
   const finishDrag = async (event) => {
-    const tapIndex = dragging?.pointerId === event.pointerId && !dragging.moved && !gesture ? dragging.index : null;
+    const wasPreviewing = Boolean(previewGesture);
+    const tapIndex = dragging?.pointerId === event.pointerId && !dragging.moved && !gesture && !wasPreviewing ? dragging.index : null;
     activePointers.delete(event.pointerId);
     pointerPieces.delete(event.pointerId);
-    if (activePointers.size < 2) gesture = null;
+    canvasPointers.delete(event.pointerId);
+    if (canvasPointers.size < 2) gesture = null;
+    if (canvasPointers.size < 2) previewGesture = null;
     if (!activePointers.size) { dragging = null; canvas.classList.remove('is-dragging'); }
     if (tapIndex !== null) await showNextCandidate(tapIndex);
   };
   canvas.addEventListener('pointerup', finishDrag);
   canvas.addEventListener('pointercancel', finishDrag);
+  canvas.addEventListener('dblclick', () => setPreviewScale(1));
   container.querySelector('#btn-download-poster').addEventListener('click', () => {
     const link = document.createElement('a');
     link.download = `moji_poster_${Date.now()}.png`;

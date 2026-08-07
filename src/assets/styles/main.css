@@ -36,7 +36,10 @@ body { background-image: repeating-linear-gradient(84deg, rgba(125, 101, 70, .03
 #camera-preview-zone { flex:1 1 auto; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#e9dfcf; border:1px dashed #cdbb9f; border-radius:8px; padding:16px; } /* 카메라 미리보기 영역에 패딩 적용 */
 .capture-container #loading-spinner { background: rgba(255,253,247,.94) !important; color: #9e7041 !important; border: 1px solid var(--surface-border); }
 .poster-view-container canvas { background: #fff7e8; box-shadow: 0 4px 20px rgba(85,58,32,.18) !important; }
-.capture-container { display:flex; flex-direction:column; height:100%; min-height:0; padding:0 16px calc(var(--thumb-zone-height) + env(safe-area-inset-bottom) + 12px); } /* 하단바 위로 촬영 후 버튼을 안전하게 배치 */
+.capture-container { display:flex; flex-direction:column; height:100%; min-height:0; padding:0; }
+.capture-container.is-reviewing { padding:0 16px calc(var(--thumb-zone-height) + env(safe-area-inset-bottom) + 12px); }
+body.camera-active .app-header { display:none; }
+body.camera-active .display-zone { height:calc(100% - var(--thumb-zone-height)); }
 #camera-preview-zone { flex:1 1 auto; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#e9dfcf; border:1px dashed #cdbb9f; border-radius:8px; padding:16px; } /* 카메라 미리보기 영역에 패딩 적용 */
 #camera-preview-zone { flex:1 1 auto; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#e9dfcf; border:1px dashed #cdbb9f; border-radius:8px; }
 #camera-preview-zone > [hidden] { display:none !important; }
@@ -161,17 +164,17 @@ body { background-image: repeating-linear-gradient(84deg, rgba(125, 101, 70, .03
 .empty-clothesline { color: var(--text-sub); font-size: .82rem; padding: 0 5px; }
 
 /* Poster collage maker */
-.poster-view-container { height:100%; min-height:0; box-sizing:border-box; padding:16px 16px calc(var(--thumb-zone-height) + 12px); display:flex; flex-direction:column; gap:10px; }
+.poster-view-container { height:100%; min-height:0; box-sizing:border-box; padding:10px 12px 12px; display:flex; flex-direction:column; gap:7px; }
 .poster-controls { display:grid; grid-template-columns:minmax(0,1fr) 92px 82px auto; gap:7px; align-items:end; }
 .poster-text-field, .poster-select { display:grid; gap:3px; color:var(--text-sub); font-size:.68rem; font-weight:800; letter-spacing:.02em; }
 .poster-controls input, .poster-controls select { min-width:0; height:40px; box-sizing:border-box; padding:0 10px; border:1px solid var(--surface-border); border-radius:7px; background:#fffdf7; color:var(--text-main); font:inherit; }
 .poster-controls button { height:40px; padding:0 11px; border:0; border-radius:7px; font:800 .78rem inherit; cursor:pointer; white-space:nowrap; }
-.poster-hint { margin:0; color:var(--text-sub); font-size:.76rem; line-height:1.35; }
+.poster-hint { margin:0; color:var(--text-sub); font-size:.7rem; line-height:1.3; }
 .poster-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .poster-upload { display:inline-flex; align-items:center; min-height:32px; padding:0 10px; border:1px dashed #b8956c; border-radius:6px; background:#fff9ed; color:#76513d; font-size:.75rem; font-weight:800; cursor:pointer; }
 .poster-actions > span { color:var(--text-sub); font-size:.72rem; }
-.poster-canvas-wrap { flex:1; min-height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:9px !important; border:1px dashed #cdbb9f; border-radius:8px; background:#e9dfcf; }
-.poster-view-container canvas { display:block; max-width:100%; max-height:100%; object-fit:contain; background:#373532; border-radius:3px; box-shadow:0 5px 20px rgba(85,58,32,.25) !important; cursor:grab; touch-action:none; }
+.poster-canvas-wrap { flex:1; min-height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px !important; border:1px dashed #cdbb9f; border-radius:8px; background:#e9dfcf; }
+.poster-view-container canvas { display:block; max-width:100%; max-height:100%; object-fit:contain; transform-origin:center; background:#373532; border-radius:3px; box-shadow:0 5px 20px rgba(85,58,32,.25) !important; cursor:grab; touch-action:none; }
 .poster-view-container canvas.is-dragging { cursor:grabbing; }
 .poster-download { min-height:44px; border:0; border-radius:8px; font:800 .9rem inherit; cursor:pointer; }
 @media (max-width:430px) { .poster-controls { grid-template-columns:minmax(0,1fr) 86px 78px; } .poster-controls button { grid-column:1 / -1; } }

@@ -27,6 +27,7 @@ async function loadAllValidCharacters() {
 }
 
 export function renderCaptureView(container, globalShutterButton, originalShutterButtonProps, setSnapClickHandler) {
+  document.body.classList.add('camera-active');
   container.innerHTML = `
     <div class="capture-container">
       <div id="camera-preview-zone">
@@ -53,6 +54,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     </div>
   `;
 
+  const captureContainer = container.querySelector('.capture-container');
   const video = container.querySelector('#camera-video');
   const sourceImg = container.querySelector('#crop-target-img');
   const cropHint = container.querySelector('#crop-hint');
@@ -110,7 +112,15 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       return;
     }
     try {
-      currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          frameRate: { ideal: 30, max: 60 }
+        },
+        audio: false
+      });
       video.srcObject = currentStream;
       await new Promise((resolve) => {
         if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
@@ -188,6 +198,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       // captureControlsWrapper.hidden = false; // 컨트롤 래퍼 표시 (아래에서 다시 숨김)
       captureControlsWrapper.hidden = false; // 컨트롤 래퍼 표시
       btnSave.hidden = false; // 사진 촬영 후 "글자 선택하기" 버튼 표시
+      captureContainer.classList.add('is-reviewing');
     } catch (error) {
       showNotice('촬영 처리 중 오류', error.message || '다시 시도해 주세요.', 'error'); // 오류 발생 시
       globalShutterButton.disabled = false; // 오류 발생 시 버튼 다시 활성화
@@ -274,6 +285,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     captureControlsWrapper.hidden = true; // 컨트롤 래퍼 숨김
     btnSave.hidden = true;
     btnCancel.hidden = true;
+    captureContainer.classList.remove('is-reviewing');
     fullImageBlob = null;
     croppedImageBlob = null;
     setShutterButtonCameraMode(); // 전역 셔터 버튼을 다시 카메라 모드로 설정
@@ -288,6 +300,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     cropper?.destroy(); cropper = null; if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl);
     restoreShutterButtonNavMode(); // 전역 셔터 버튼을 원래 네비게이션 상태로 복원
     isCaptureViewActive = false; // 뷰가 정리될 때 비활성화 플래그 설정
+    document.body.classList.remove('camera-active');
   };
 }
 
@@ -366,5 +379,5 @@ async function capturePhoto(video) {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.98));
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 1));
 }
