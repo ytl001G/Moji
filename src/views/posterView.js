@@ -119,7 +119,7 @@ export async function renderPosterView(container) {
       if (isPointInPiece(point, piece)) {
         activePointers.set(event.pointerId, point);
         pointerPieces.set(event.pointerId, index);
-        dragging = { index, pointerId: event.pointerId, offsetX: point.x - piece.x, offsetY: point.y - piece.y };
+        dragging = { index, pointerId: event.pointerId, offsetX: point.x - piece.x, offsetY: point.y - piece.y, startX: point.x, startY: point.y, moved: false };
         canvas.setPointerCapture(event.pointerId);
         canvas.classList.add('is-dragging');
         beginTwoFingerGesture();
@@ -150,7 +150,17 @@ export async function renderPosterView(container) {
       return;
     }
     if (!dragging || dragging.pointerId !== event.pointerId) return;
-    dragging.moved = true;
+
+    // Check for movement threshold to distinguish tap from drag
+    if (!dragging.moved) {
+      const dx = point.x - dragging.startX;
+      const dy = point.y - dragging.startY;
+      if (Math.hypot(dx, dy) > 5) { // 5px tolerance
+        dragging.moved = true;
+      }
+    }
+
+    if (!dragging.moved) return; // Don't execute drag logic if not moved enough
     const piece = posterPieces[dragging.index];
     piece.x = Math.max(0, Math.min(canvas.width - piece.width, point.x - dragging.offsetX));
     piece.y = Math.max(62, Math.min(canvas.height - piece.height, point.y - dragging.offsetY));
