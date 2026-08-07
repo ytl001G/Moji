@@ -29,19 +29,24 @@
   transform: scale(0.92); /* 클릭 시 피드백은 유지 */
 }
 
-.nav-cluster-left, .nav-cluster-right { /* These are direct flex items of .thumb-zone */
+.nav-cluster-left, .nav-cluster-right {
   display: flex;
   align-items: center;
   gap: 8px; /* 버튼들 사이의 간격 */
 }
 
 /* 카메라 뷰에서 셔터 버튼으로 변환될 때의 스타일 */
+.shutter-btn {
+  /* 기본 셔터 버튼 스타일을 더 예쁘게 */
+  border: 3px solid #fffaf0; /* 흰색 테두리 */
+  box-shadow: 0 3px 0 #9e624e, 0 6px 13px rgba(108,75,55,.25); /* 깊이감 있는 그림자 */
+}
 .shutter-btn.shutter-active {
-  width: 70px; /* 약간 더 크게 */
-  height: 70px;
+  width: 66px; /* 크기 조정 */
+  height: 66px;
   border-radius: 50%; /* 완벽한 원형 */
-  background: linear-gradient(135deg, #e04e4e, #c0392b); /* 더 붉은색으로 변경 */
-  box-shadow: 0 4px 0 #a02c20, 0 8px 16px rgba(192, 57, 43, 0.35);
+  background: linear-gradient(135deg, #e04e4e, #c0392b); /* 붉은색 그라데이션 */
+  box-shadow: 0 4px 0 #a02c20, 0 8px 16px rgba(192, 57, 43, 0.35); /* 붉은색 그림자 */
   transform: none; /* 회전 제거 */
   margin-top: 0; /* 크기 변화에 따른 위치 조정 제거 */
 }

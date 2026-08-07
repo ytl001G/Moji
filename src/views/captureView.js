@@ -34,7 +34,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
         <img id="crop-target-img" alt="촬영한 이미지" hidden>
         <p id="crop-hint" class="crop-hint" hidden>네 모서리를 조절하여 글자 영역을 맞춰 주세요.</p>
       </div>
-      <div class="capture-controls">
+      <div id="capture-controls-wrapper" class="capture-controls" hidden> <!-- hidden 속성 추가 -->
         <button id="btn-save-crop" type="button" hidden>글자 입력하기</button>
         <button id="btn-cancel" type="button" hidden>다시 촬영</button>
       </div>
@@ -62,6 +62,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
   const charInput = container.querySelector('#save-char');
   const btnSave = container.querySelector('#btn-save-crop');
   const btnCancel = container.querySelector('#btn-cancel');
+  const captureControlsWrapper = container.querySelector('#capture-controls-wrapper'); // 컨트롤 래퍼 참조
   const btnScanDocument = container.querySelector('#btn-scan-document'); // 스캔 버튼 참조
   let fullImageBlob = null;
   let sourceObjectUrl = null;
@@ -74,7 +75,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
   // 전역 셔터 버튼의 상태를 변경하는 함수들
   function setShutterButtonCameraMode() {
     if (!globalShutterButton) return;
-    if (!isCaptureViewActive) return; // 뷰가 활성화된 상태에서만 셔터 모드 적용
+    if (!isCaptureViewActive) return; // 뷰가 활성화된 상태에서만 셔터 모드 적용 (지연 호출 방지)
     globalShutterButton.innerHTML = '<div class="shutter-inner">●</div>'; // 셔터 아이콘
     globalShutterButton.classList.add('shutter-active'); // 활성 셔터 스타일 적용 (CSS에서 정의)
     globalShutterButton.disabled = !cameraReady; // 카메라 준비 상태에 따라 활성화/비활성화
@@ -179,6 +180,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       window.setTimeout(() => cropper && attachCornerHandles(cropper), 120);
       cropHint.hidden = false;
       btnCancel.hidden = false;
+      captureControlsWrapper.hidden = false; // 컨트롤 래퍼 표시
       btnScanDocument.hidden = false; // 스캔 버튼 표시
       btnSave.hidden = false; // 사진 촬영 후 "글자 선택하기" 버튼 표시
     } catch (error) {
@@ -263,11 +265,13 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
       await saveImageToOpfs(fullImageBlob, `full_${timestamp}.jpg`);
 
       // DB에 아이템 추가
-      await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng });
+      const photoDate = new Date(location.createdAt);
+      const hour = photoDate.getHours();
+      const isNight = hour < 6 || hour > 19; // 대략적인 야간 시간 (오후 7시 ~ 오전 6시)
+      await addCollectionItem({ charId, createdAt: location.createdAt, cropFileName: `crop_${timestamp}.png`, fullFileName: `full_${timestamp}.jpg`, lat: location.lat, lng: location.lng, address: location.address, isNight });
 
       saveSheet.hidden = true;
       showNotice('도감에 저장했어요', `'${charId}' 기록을 추가했습니다.`, 'success'); // 성공 메시지
-      showNotice('도감에 저장했어요', `'${charId}' 기록을 추가했습니다.`, 'success');
       resetToCaptureState(); // 성공 후 카메라 뷰로 리셋
     } catch (error) {
       showNotice('저장하지 못했어요', error.message || '잠시 후 다시 시도해 주세요.', 'error');
@@ -292,6 +296,7 @@ export function renderCaptureView(container, globalShutterButton, originalShutte
     cropHint.hidden = true; // 크롭 힌트 숨김
     video.hidden = false;
     // btnSnap 관련 로직 제거, 전역 셔터 버튼이 관리
+    captureControlsWrapper.hidden = true; // 컨트롤 래퍼 숨김
     btnScanDocument.hidden = true; // 스캔 버튼 숨김
     btnSave.hidden = true;
     btnCancel.hidden = true;

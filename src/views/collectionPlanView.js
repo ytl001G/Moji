@@ -58,7 +58,7 @@ export async function renderCollectionPlanView(container) {
       const column = getKanaColumn(item, characters);
       if (column) card.style.gridColumnStart = column;
       card.setAttribute('aria-label', `${item.id} ${records.length ? '수집됨' : '미수집'}`);
-      if (records.length > 0) {
+      if (records.length > 0) { // 수집된 기록이 있을 경우 빨랫줄 디자인 적용
         const clotheslineContainer = document.createElement('div');
         clotheslineContainer.className = 'clothesline-images';
 
@@ -72,14 +72,23 @@ export async function renderCollectionPlanView(container) {
           img.src = imgUrl;
           img.alt = `${item.id} 수집 사진 ${i + 1}`;
           img.className = 'clothesline-photo';
-          img.style.transform = `rotate(${Math.random() * 10 - 5}deg)`; // -5도 ~ +5도 랜덤 회전
+          img.style.transform = `rotate(${Math.random() * 10 - 5}deg) scale(0.8)`; // -5도 ~ +5도 랜덤 회전 및 크기 조정
           img.style.zIndex = 10 - i; // 겹치기 순서
           clotheslineContainer.appendChild(img);
         }
 
         card.appendChild(clotheslineContainer);
-        card.innerHTML += `<span class="card-character">${item.id}</span>`;
-        if (records.length > 1) card.innerHTML += `<em>${records.length}</em>`; // 총 수집 횟수 표시
+
+        const charSpan = document.createElement('span');
+        charSpan.className = 'card-character';
+        charSpan.textContent = item.id;
+        card.appendChild(charSpan);
+
+        if (records.length > 1) {
+          const countEm = document.createElement('em');
+          countEm.textContent = records.length; // 총 수집 횟수 표시
+          card.appendChild(countEm);
+        }
       } else {
         card.innerHTML = `<span class="card-character">${item.id}</span>`;
       }

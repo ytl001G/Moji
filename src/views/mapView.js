@@ -2,6 +2,7 @@ import { getAllCollectedItems } from '../db/index.js';
 import { showNotice } from '../components/notice.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+window.L = L; // MarkerClusterGroup 플러그인이 전역 L을 확장하도록 명시적으로 설정
 import 'leaflet.markercluster'; // MarkerClusterGroup 플러그인 임포트
 
 const DEFAULT_MAP_CENTER = [35.6812, 139.7671]; // 도쿄역 근처
